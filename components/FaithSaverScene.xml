@@ -1,0 +1,6 @@
+<component name="FaithSaverScene" extends="Scene">
+  <script type="text/brightscript" uri="pkg:/components/FaithSaverScene.brs" />
+  <children>
+    <Poster id="img" width="1920" height="1080" loadDisplayMode="scaleToFill" />
+  </children>
+</component>
