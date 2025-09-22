@@ -1,101 +1,118 @@
-' --- top of file (existing init etc.) ---
+' FaithSaver runtime: show local fallback immediately, then remote; rotate every 5 minutes
 
-' Local offline fallbacks (one per category)
+sub init()
+  m.img = m.top.findNode("img")
+  m.base = "https://christhetech131.github.io/FaithSaver"
+  m.index = invalid
+
+  ' Always show something right away (prevents “frozen” preview)
+  ShowLocalFallback()
+
+  ' 5-minute rotation timer
+  m.rotateTimer = CreateObject("roSGNode","Timer")
+  m.rotateTimer.duration = 300
+  m.rotateTimer.observeField("fire","onRotate")
+  m.top.appendChild(m.rotateTimer)
+
+  ' Fetch remote index.json asynchronously
+  FetchIndex(true)
+end sub
+
+' -------- category picking --------
+function EffectiveCategory() as string
+  reg = CreateObject("roRegistrySection","FaithSaver")
+  saved = LCase(reg.Read("category"))
+  if saved = invalid or saved = "" then saved = "animals"
+  if saved = "seasonal" then
+    mth = CreateObject("roDateTime").GetMonth()
+    if mth=3 or mth=4 or mth=5 then return "spring"
+    if mth=6 or mth=7 or mth=8 then return "summer"
+    if mth=9 or mth=10 or mth=11 then return "fall"
+    return "winter"
+  end if
+  return saved
+end function
+
+' -------- offline fallbacks --------
 function LocalFallbacks() as Object
+  ' If you kept a single default.jpg, point all keys to it; otherwise include per-category jpgs.
   return {
-    animals:  ["pkg:/images/offline/animals.jpg"]
-    fall:     ["pkg:/images/offline/fall.jpg"]
-    geology:  ["pkg:/images/offline/geology.jpg"]
-    scenery:  ["pkg:/images/offline/scenery.jpg"]
-    space:    ["pkg:/images/offline/space.jpg"]
-    spring:   ["pkg:/images/offline/spring.jpg"]
-    summer:   ["pkg:/images/offline/summer.jpg"]
-    textures: ["pkg:/images/offline/textures.jpg"]
-    winter:   ["pkg:/images/offline/winter.jpg"]
+    animals:  ["pkg:/images/offline/default.jpg"]
+    fall:     ["pkg:/images/offline/default.jpg"]
+    geology:  ["pkg:/images/offline/default.jpg"]
+    scenery:  ["pkg:/images/offline/default.jpg"]
+    space:    ["pkg:/images/offline/default.jpg"]
+    spring:   ["pkg:/images/offline/default.jpg"]
+    summer:   ["pkg:/images/offline/default.jpg"]
+    textures: ["pkg:/images/offline/default.jpg"]
+    winter:   ["pkg:/images/offline/default.jpg"]
   }
 end function
 
-' If you prefer a single global fallback instead, use this and call it below:
-' function GlobalFallbackList() as Object
-'   fallback = ["pkg:/images/offline/default.jpg"]
-'   return { animals:fallback, fall:fallback, geology:fallback, scenery:fallback, space:fallback, spring:fallback, summer:fallback, textures:fallback, winter:fallback }
-' end function
+sub ShowLocalFallback()
+  lf = LocalFallbacks()
+  cat = EffectiveCategory()
+  list = lf[cat]
+  if list = invalid or list.count() = 0 then list = ["pkg:/images/offline/default.jpg"]
+  m.img.uri = list[0]
+end sub
 
+' -------- remote index fetch --------
 sub FetchIndex(startRotation as boolean)
   url = m.base + "/index.json?t=" + CreateObject("roDateTime").AsSeconds().ToStr()
   port = CreateObject("roMessagePort")
   xfer = CreateObject("roUrlTransfer")
   xfer.SetMessagePort(port)
-  xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")  ' robust HTTPS
+  xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
   xfer.InitClientCertificates()
-  xfer.RetainBodyOnError(true)
   xfer.SetUrl(url)
-  xfer.SetRequest("GET")
   xfer.AsyncGetToString()
 
   timeout = CreateObject("roTimespan") : timeout.Mark()
-  maxWaitMs = 7000  ' 7s network timeout
+  maxWaitMs = 7000
 
   while true
     msg = wait(250, port)
-    if msg <> invalid and type(msg) = "roUrlEvent" then
+    if type(msg) = "roUrlEvent" then
       if msg.GetResponseCode() = 200 then
         j = ParseJson(msg.GetString())
         if j <> invalid and j.categories <> invalid then
           m.index = j
-          if m.index.updated <> invalid then m.updatedTag = m.index.updated
-          if startRotation then
-            PrefetchNext(true)
-            m.rotateTimer.control = "start"
-            m.refreshTimer.control = "start"
-          else
-            PrefetchNext(false)
-          end if
+          if startRotation then m.rotateTimer.control = "start"
+          ShowRandom() ' swap from local to remote ASAP
           return
         end if
       end if
-      exit while ' HTTP error → fall back
+      exit while ' error → stay on local fallback
     end if
-    if timeout.TotalMilliseconds() > maxWaitMs then exit while ' Timeout → fall back
+    if timeout.TotalMilliseconds() > maxWaitMs then exit while
   end while
 
-  ' --- Fallback: build an in-memory "index" from local assets
-  m.index = { updated: "local", categories: LocalFallbacks() }
-  if startRotation then
-    PrefetchNext(true)
-    m.rotateTimer.control = "start"
-    m.refreshTimer.control = "start"
+  if startRotation then m.rotateTimer.control = "start"
+end sub
+
+' -------- image selection --------
+sub ShowRandom()
+  if m.index = invalid then return
+  cat = EffectiveCategory()
+
+  list = m.index.categories[cat]
+  if list = invalid or list.count() = 0 then return
+
+  idx = int(Rnd(0) * list.count())
+  p = list[idx]
+
+  if Left(p,1) = "/" then
+    m.img.uri = m.base + p
   else
-    PrefetchNext(false)
+    m.img.uri = p ' supports pkg:/ paths if ever needed
   end if
 end sub
 
-sub ShowRandom()
-  if m.index = invalid then return
-  saved = LCase(CreateObject("roRegistrySection","FaithSaver").Read("category"))
-  category = iif(saved = "seasonal", CurrentSeasonCategory(), m.category)
-  category = LCase(category)
-
-  list = invalid
-  if m.index.categories <> invalid then list = m.index.categories[category]
-  if list = invalid or list.count() = 0 then
-    ' Try local fallback for this category
-    lf = LocalFallbacks()
-    list = lf[category]
-    if list = invalid or list.count() = 0 then return
-  end if
-
-  idx = int(Rnd(0) * list.count())
-  url = list[idx]
-
-  ' Local vs remote: use pkg:/ path as-is, or prepend base for remote paths starting with "/"
-  if Left(url, 1) = "/" then
-    m.imgToUse = m.base + url
+sub onRotate()
+  if m.index <> invalid then
+    ShowRandom()
   else
-    m.imgToUse = url ' pkg:/ local
+    ShowLocalFallback()
   end if
-
-  ' Set URI on the hidden prefetch poster (handled in your prefetch logic)
-  ' For single-poster setups, just assign to m.img.uri directly:
-  ' m.img.uri = m.imgToUse
 end sub

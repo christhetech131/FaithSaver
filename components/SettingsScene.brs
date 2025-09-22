@@ -1,22 +1,23 @@
-' Settings UI: choose among 10 options (Seasonal + 9 categories)
-' Shows the *current* season inline next to Seasonal.
-
+' FaithSaver settings: 10 options (Seasonal + 9 categories)
 sub init()
-  m.list = m.top.findNode("list")
+  m.list  = m.top.findNode("list")
   m.title = m.top.findNode("title")
-  m.hint = m.top.findNode("hint")
+  m.hint  = m.top.findNode("hint")
 
+  ' Build menu
   m.options = BuildOptionsWithSeason()
-  m.list.ObserveField("itemSelected", "onItemSelected")
-  m.list.ObserveField("itemFocused", "onItemFocused")
-
   root = CreateObject("roSGNode","ContentNode")
   for each opt in m.options
-    node = CreateObject("roSGNode","ContentNode")
-    node.title = opt.title
-    root.appendChild(node)
+    n = CreateObject("roSGNode","ContentNode")
+    n.title = opt.title
+    root.appendChild(n)
   end for
   m.list.content = root
+
+  ' Make sure the list can be selected via OK
+  m.list.selectable = true
+  m.list.observeField("itemSelected", "onItemSelected")
+  m.list.observeField("itemFocused",  "onItemFocused")
 
   ' Pre-select saved choice
   reg = CreateObject("roRegistrySection","FaithSaver")
@@ -29,7 +30,9 @@ sub init()
     end if
   end for
 
-  m.hint.text = "OK = Select   |   Back = Close"
+  ' Ensure keyboard focus lands on the list
+  m.top.setFocus(true)
+  m.list.setFocus(true)
 end sub
 
 function BuildOptionsWithSeason() as Object
@@ -49,11 +52,10 @@ function BuildOptionsWithSeason() as Object
 end function
 
 function CurrentSeasonName() as string
-  dt = CreateObject("roDateTime")
-  m = dt.GetMonth()
-  if m = 3 or m = 4 or m = 5 then return "spring"
-  if m = 6 or m = 7 or m = 8 then return "summer"
-  if m = 9 or m = 10 or m = 11 then return "fall"
+  mth = CreateObject("roDateTime").GetMonth()
+  if mth = 3 or mth = 4 or mth = 5 then return "spring"
+  if mth = 6 or mth = 7 or mth = 8 then return "summer"
+  if mth = 9 or mth = 10 or mth = 11 then return "fall"
   return "winter"
 end function
 
@@ -72,17 +74,18 @@ end sub
 sub onItemFocused()
   idx = m.list.itemFocused
   if idx < 0 or idx >= m.options.count() then return
-  ' Dynamic hint: show what will display if Seasonal is chosen
   opt = m.options[idx]
   if LCase(opt.key) = "seasonal" then
-    m.hint.text = "Auto-selects by date → " + CurrentSeasonName() + " (OK = Save)"
+    m.hint.text = "Auto-selects by date → " + CurrentSeasonName() + "   (OK = Save)"
   else
-    m.hint.text = "Category: " + opt.title + " (OK = Save)"
+    m.hint.text = "Category: " + opt.title + "   (OK = Save)"
   end if
 end sub
 
+' Make Back exit settings. Return TRUE to consume the key.
 function onKeyEvent(key as string, press as boolean) as boolean
-  if press and key = "back" then
+  if not press then return false
+  if key = "back" then
     m.top.close = true
     return true
   end if

@@ -1,11 +1,9 @@
 <component name="FaithSaverScene" extends="Scene">
   <children>
-    <!-- Double-buffered Posters for seamless swaps -->
-    <Poster id="imgA" width="1920" height="1080" loadDisplayMode="scaleToFill" visible="true" />
-    <Poster id="imgB" width="1920" height="1080" loadDisplayMode="scaleToFill" visible="false" />
-
-    <!-- (Optional) tiny status label; hidden in production -->
-    <Label id="status" translation="[30,1030]" font="Small" visible="false" />
+    <!-- Single Poster for simplicity; we’ll set a local image immediately -->
+    <Poster id="img"
+            width="1920" height="1080"
+            loadDisplayMode="scaleToFill" />
   </children>
   <script type="text/brightscript" uri="pkg:/components/FaithSaverScene.brs" />
 </component>

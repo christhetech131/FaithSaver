@@ -1,15 +1,25 @@
 <component name="SettingsScene" extends="Scene">
   <children>
-    <Rectangle id="bg" width="1920" height="1080" color="0x000000D0" />
-    <Label id="title" translation="[120,80]" font="Medium" text="FaithSaver Settings" />
-    <MarkupList
-      id="list"
-      translation="[120,140]"
-      itemSize="[1680, 64]"
-      numRows="10"
-      drawFocusFeedback="true"
-      vertFocusAnimationStyle="floatingFocus" />
-    <Label id="hint" translation="[120, 860]" font="Small" />
+    <!-- #c4dce8 with full alpha (RRGGBBAA) -->
+    <Rectangle id="bg" width="1920" height="1080" color="0xc4dce8ff" />
+
+    <Label id="title"
+           translation="[120,80]"
+           font="Medium"
+           text="FaithSaver Settings" />
+
+    <!-- LabelList is simple and robust for text choices -->
+    <LabelList id="list"
+               translation="[120,140]"
+               itemSize="[1680, 64]"
+               numRows="10"
+               drawFocusFeedback="true" />
+
+    <Label id="hint"
+           translation="[120, 860]"
+           font="Small"
+           text="OK = Select   |   Back = Close" />
   </children>
+
   <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
 </component>
