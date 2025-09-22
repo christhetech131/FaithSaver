@@ -3,12 +3,9 @@
     <field id="title" type="string" />
     <field id="isFocused" type="boolean" />
   </interface>
-
   <children>
-    <!-- Selection bar (your blue accent) -->
     <Rectangle id="bar" width="1680" height="64" color="0x155175FF" visible="false" />
     <Label id="label" translation="[16,0]" font="Large" color="0x000000FF" />
   </children>
-
   <script type="text/brightscript" uri="pkg:/components/SettingsRow.brs" />
 </component>

@@ -3,7 +3,6 @@ sub init()
   m.title = m.top.findNode("title")
   m.hint  = m.top.findNode("hint")
 
-  ' Build menu content
   m.options = BuildOptionsWithSeason()
   root = CreateObject("roSGNode","ContentNode")
   for each opt in m.options
@@ -14,11 +13,9 @@ sub init()
   m.list.content = root
   m.list.selectable = true
 
-  ' glue: let each row know its focus state so it can draw the bar
   m.list.observeField("itemFocused", "onItemFocused")
   m.list.observeField("itemSelected","onItemSelected")
 
-  ' preselect saved
   reg = CreateObject("roRegistrySection","FaithSaver")
   saved = LCase(reg.Read("category"))
   if saved = invalid or saved = "" then saved = "animals"
@@ -55,8 +52,7 @@ function CurrentSeasonName() as string
 end function
 
 sub onItemFocused()
-  ' propagate focus to visible row component so it can show the blue bar
-  idx = m.list.itemFocused
+  ' show/hide the blue bar in the visible row component
   for i = 0 to m.list.visibleChildCount()-1
     row = m.list.getChild(i)
     if row <> invalid then row.isFocused = (m.list.itemFocusedVisibleIndex = i)
@@ -81,7 +77,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
     m.top.close = true
     return true
   else if key = "OK" then
-    ' Make OK always save even if an event didn’t fire for some reason
     idx = m.list.itemFocused
     if idx >= 0 then
       m.list.itemSelected = idx

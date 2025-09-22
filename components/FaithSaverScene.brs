@@ -4,18 +4,13 @@ sub init()
   m.base = "https://christhetech131.github.io/FaithSaver"
   m.index = invalid
 
-  ' Show local image immediately (prevents blank preview)
   ShowLocalFallback()
 
-  ' Observe Task results
   m.loader.observeField("response", "onLoaded")
   m.loader.observeField("error", "onLoadError")
-
-  ' Start fetch (off UI thread)
   m.loader.url = m.base + "/index.json?t=" + CreateObject("roDateTime").AsSeconds().ToStr()
   m.loader.control = "run"
 
-  ' Rotation
   m.rotateTimer = CreateObject("roSGNode","Timer")
   m.rotateTimer.duration = 300
   m.rotateTimer.observeField("fire","onRotate")
@@ -29,15 +24,14 @@ sub onLoaded()
   if data <> invalid then j = ParseJson(data)
   if j <> invalid and j.categories <> invalid then
     m.index = j
-    ShowRandom() ' swap to remote ASAP
+    ShowRandom()
   end if
 end sub
 
 sub onLoadError()
-  ' Stay on local fallback; nothing to do
+  ' stay on local fallback
 end sub
 
-' ------- helper funcs -------
 function EffectiveCategory() as string
   reg = CreateObject("roRegistrySection","FaithSaver")
   saved = LCase(reg.Read("category"))

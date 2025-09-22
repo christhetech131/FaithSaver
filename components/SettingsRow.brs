@@ -10,8 +10,6 @@ sub onTitle()
 end sub
 
 sub onFocusChange()
-  focused = m.top.isFocused
-  m.bar.visible = focused
-  ' Text color: black unselected and selected (your request)
+  m.bar.visible = m.top.isFocused
   m.label.color = &h000000FF
 end sub

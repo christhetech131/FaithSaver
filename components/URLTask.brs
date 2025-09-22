@@ -3,19 +3,14 @@ sub init()
 end sub
 
 sub startFetch()
-  url = m.top.url
-  if url = invalid or url = "" then return
-
+  u = m.top.url
+  if u = invalid or u = "" then return
   x = CreateObject("roUrlTransfer")
   x.SetCertificatesFile("common:/certs/ca-bundle.crt")
   x.InitClientCertificates()
-  x.SetUrl(url)
-  data = invalid
-  code = 0
-  ' Blocking fetch is OK here (Task runs off UI thread)
+  x.SetUrl(u)
   data = x.GetToString()
   code = x.GetResponseCode()
-
   if code = 200 and data <> invalid then
     m.top.response = data
   else
