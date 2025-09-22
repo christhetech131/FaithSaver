@@ -1,223 +1,101 @@
-' Screensaver runtime: prefetch, rotate, refresh, and robust error handling
+' --- top of file (existing init etc.) ---
 
-sub init()
-  ' Nodes
-  m.imgA = m.top.findNode("imgA")
-  m.imgB = m.top.findNode("imgB")
-  m.status = m.top.findNode("status")
-
-  ' Observe loadStatus so we can detect failures and readiness
-  m.imgA.ObserveField("loadStatus", "onPosterStatus")
-  m.imgB.ObserveField("loadStatus", "onPosterStatus")
-
-  ' State
-  m.base = "https://christhetech131.github.io/FaithSaver"
-  m.index = invalid
-  m.updatedTag = ""
-  m.current = m.imgA     ' currently displayed poster
-  m.next = m.imgB        ' prefetch target
-  m.pendingUrl = invalid ' URL we’re preloading into m.next
-  m.randomAttempts = 0
-
-  ' Timers
-  m.rotateTimer = CreateObject("roSGNode", "Timer")
-  m.rotateTimer.duration = 300     ' 5 minutes
-  m.rotateTimer.ObserveField("fire", "onRotateTick")
-  m.top.AppendChild(m.rotateTimer)
-
-  m.refreshTimer = CreateObject("roSGNode", "Timer")
-  m.refreshTimer.duration = 7200   ' 2 hours
-  m.refreshTimer.repeat = true
-  m.refreshTimer.ObserveField("fire", "onRefreshTick")
-  m.top.AppendChild(m.refreshTimer)
-
-  FetchIndex(true) ' initial fetch; starts rotation when ready
-end sub
-
-' ---------- CATEGORY RESOLUTION ----------
-
-function ReadSavedCategory() as string
-  reg = CreateObject("roRegistrySection","FaithSaver")
-  cat = reg.Read("category")
-  if cat = invalid or cat = "" then return "animals"
-  return LCase(cat)
+' Local offline fallbacks (one per category)
+function LocalFallbacks() as Object
+  return {
+    animals:  ["pkg:/images/offline/animals.jpg"]
+    fall:     ["pkg:/images/offline/fall.jpg"]
+    geology:  ["pkg:/images/offline/geology.jpg"]
+    scenery:  ["pkg:/images/offline/scenery.jpg"]
+    space:    ["pkg:/images/offline/space.jpg"]
+    spring:   ["pkg:/images/offline/spring.jpg"]
+    summer:   ["pkg:/images/offline/summer.jpg"]
+    textures: ["pkg:/images/offline/textures.jpg"]
+    winter:   ["pkg:/images/offline/winter.jpg"]
+  }
 end function
 
-function CurrentSeasonCategory() as string
-  dt = CreateObject("roDateTime")
-  mth = dt.GetMonth()
-  ' meteorological seasons
-  if (mth = 3) or (mth = 4) or (mth = 5) then return "spring"
-  if (mth = 6) or (mth = 7) or (mth = 8) then return "summer"
-  if (mth = 9) or (mth = 10) or (mth = 11) then return "fall"
-  return "winter"
-end function
-
-function EffectiveCategory() as string
-  saved = ReadSavedCategory()
-  if saved = "seasonal" then return CurrentSeasonCategory()
-  return saved
-end function
-
-' ---------- INDEX FETCH & REFRESH ----------
+' If you prefer a single global fallback instead, use this and call it below:
+' function GlobalFallbackList() as Object
+'   fallback = ["pkg:/images/offline/default.jpg"]
+'   return { animals:fallback, fall:fallback, geology:fallback, scenery:fallback, space:fallback, spring:fallback, summer:fallback, textures:fallback, winter:fallback }
+' end function
 
 sub FetchIndex(startRotation as boolean)
   url = m.base + "/index.json?t=" + CreateObject("roDateTime").AsSeconds().ToStr()
   port = CreateObject("roMessagePort")
   xfer = CreateObject("roUrlTransfer")
   xfer.SetMessagePort(port)
+  xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")  ' robust HTTPS
+  xfer.InitClientCertificates()
+  xfer.RetainBodyOnError(true)
   xfer.SetUrl(url)
+  xfer.SetRequest("GET")
   xfer.AsyncGetToString()
 
+  timeout = CreateObject("roTimespan") : timeout.Mark()
+  maxWaitMs = 7000  ' 7s network timeout
+
   while true
-    msg = wait(0, port)
-    if type(msg) = "roUrlEvent" then
+    msg = wait(250, port)
+    if msg <> invalid and type(msg) = "roUrlEvent" then
       if msg.GetResponseCode() = 200 then
-        data = msg.GetString()
-        j = invalid
-        ' Guard against bad JSON
-        if data <> invalid and data.len() > 0 then
-          j = ParseJson(data)
-        end if
+        j = ParseJson(msg.GetString())
         if j <> invalid and j.categories <> invalid then
           m.index = j
           if m.index.updated <> invalid then m.updatedTag = m.index.updated
           if startRotation then
-            ' first run: prepare and show immediately when ready
             PrefetchNext(true)
             m.rotateTimer.control = "start"
             m.refreshTimer.control = "start"
           else
-            ' on refresh: just ensure we have a next image queued
             PrefetchNext(false)
           end if
+          return
         end if
       end if
-      return
+      exit while ' HTTP error → fall back
     end if
+    if timeout.TotalMilliseconds() > maxWaitMs then exit while ' Timeout → fall back
   end while
-end sub
 
-sub onRefreshTick()
-  ' Re-fetch index.json; only act if "updated" changed
-  oldTag = m.updatedTag
-  url = m.base + "/index.json?t=" + CreateObject("roDateTime").AsSeconds().ToStr()
-  port = CreateObject("roMessagePort")
-  xfer = CreateObject("roUrlTransfer")
-  xfer.SetMessagePort(port)
-  xfer.SetUrl(url)
-  xfer.AsyncGetToString()
-
-  while true
-    msg = wait(0, port)
-    if type(msg) = "roUrlEvent" then
-      if msg.GetResponseCode() = 200 then
-        j = ParseJson(msg.GetString())
-        if j <> invalid and j.updated <> invalid and j.categories <> invalid then
-          if j.updated <> oldTag then
-            m.index = j
-            m.updatedTag = j.updated
-            PrefetchNext(false)
-          end if
-        end if
-      end if
-      return
-    end if
-  end while
-end sub
-
-' ---------- IMAGE ROTATION & PREFETCH ----------
-
-sub onRotateTick()
-  ' At each tick, if the prefetch poster is ready, swap; otherwise retry prefetch
-  if m.next.loadStatus = "ready" and m.pendingUrl <> invalid then
-    SwapPosters()
-    PrefetchNext(false)
+  ' --- Fallback: build an in-memory "index" from local assets
+  m.index = { updated: "local", categories: LocalFallbacks() }
+  if startRotation then
+    PrefetchNext(true)
+    m.rotateTimer.control = "start"
+    m.refreshTimer.control = "start"
   else
-    ' Try another image if we failed to prefetch
     PrefetchNext(false)
   end if
 end sub
 
-sub PrefetchNext(firstRun as boolean)
+sub ShowRandom()
   if m.index = invalid then return
+  saved = LCase(CreateObject("roRegistrySection","FaithSaver").Read("category"))
+  category = iif(saved = "seasonal", CurrentSeasonCategory(), m.category)
+  category = LCase(category)
 
-  cat = EffectiveCategory()
-  list = m.index.categories[cat]
+  list = invalid
+  if m.index.categories <> invalid then list = m.index.categories[category]
   if list = invalid or list.count() = 0 then
-    ' Nothing to show in this category
-    return
+    ' Try local fallback for this category
+    lf = LocalFallbacks()
+    list = lf[category]
+    if list = invalid or list.count() = 0 then return
   end if
 
-  ' Choose a random different URL than what's currently shown
-  maxTries = 8
-  tries = 0
-  url = invalid
-  currentUrl = m.current.uri
+  idx = int(Rnd(0) * list.count())
+  url = list[idx]
 
-  while tries < maxTries
-    idx = int(Rnd(0) * list.count())
-    candidate = m.base + list[idx]
-    if candidate <> currentUrl and candidate <> m.pendingUrl then
-      url = candidate
-      exit while
-    end if
-    tries = tries + 1
-  end while
-
-  if url = invalid then
-    ' fallback to any entry
-    url = m.base + list[int(Rnd(0) * list.count())]
+  ' Local vs remote: use pkg:/ path as-is, or prepend base for remote paths starting with "/"
+  if Left(url, 1) = "/" then
+    m.imgToUse = m.base + url
+  else
+    m.imgToUse = url ' pkg:/ local
   end if
 
-  m.pendingUrl = url
-  m.next.uri = url
-
-  ' On first run, if next becomes ready, we swap immediately in onPosterStatus
-end sub
-
-sub onPosterStatus(event as Object)
-  poster = event.GetRoSGNode()
-  status = poster.loadStatus
-
-  ' If the prefetch poster finished loading successfully and this is first frame, swap right away
-  if poster = m.next then
-    if status = "ready" then
-      ' If nothing is visible yet (initial load), swap now
-      if m.current.uri = invalid then
-        SwapPosters()
-      end if
-    else if status = "failed"
-      ' Try another image quickly (avoid infinite loops)
-      if m.randomAttempts < 5 then
-        m.randomAttempts = m.randomAttempts + 1
-        PrefetchNext(false)
-      else
-        m.randomAttempts = 0
-      end if
-    end if
-  else if poster = m.current
-    if status = "failed" then
-      ' Current failed (rare): immediately try to recover with next
-      if m.next.loadStatus = "ready" then
-        SwapPosters()
-      else
-        PrefetchNext(false)
-      end if
-    end if
-  end if
-end sub
-
-sub SwapPosters()
-  ' Make next visible, hide current, then swap references
-  m.next.visible = true
-  m.current.visible = false
-
-  tmp = m.current
-  m.current = m.next
-  m.next = tmp
-
-  ' Reset pending and attempts
-  m.pendingUrl = invalid
-  m.randomAttempts = 0
+  ' Set URI on the hidden prefetch poster (handled in your prefetch logic)
+  ' For single-poster setups, just assign to m.img.uri directly:
+  ' m.img.uri = m.imgToUse
 end sub
