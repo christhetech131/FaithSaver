@@ -1,24 +1,30 @@
 <component name="SettingsScene" extends="Scene">
   <children>
-    <!-- #c4dce8 with full alpha (RRGGBBAA) -->
-    <Rectangle id="bg" width="1920" height="1080" color="0xc4dce8ff" />
+    <!-- Use your splash image as the page background -->
+    <Poster id="bg" uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+            width="1920" height="1080" loadDisplayMode="scaleToFill" />
+
+    <!-- A subtle overlay improves label contrast over the splash -->
+    <Rectangle id="overlay" width="1920" height="1080" color="0xFFFFFF40" />
 
     <Label id="title"
            translation="[120,80]"
            font="Medium"
-           text="FaithSaver Settings" />
+           text="FaithSaver Settings"
+           color="0x000000FF" />
 
-    <!-- LabelList is simple and robust for text choices -->
     <LabelList id="list"
-               translation="[120,140]"
-               itemSize="[1680, 64]"
+               translation="[120,160]"
+               itemSize="[1680, 72]"
                numRows="10"
-               drawFocusFeedback="true" />
+               drawFocusFeedback="false"
+               itemComponentName="SettingsRow" />
 
     <Label id="hint"
-           translation="[120, 860]"
+           translation="[120, 980]"
            font="Small"
-           text="OK = Select   |   Back = Close" />
+           color="0x000000FF"
+           text="OK = Select    |    Back = Close" />
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />

@@ -1,9 +1,7 @@
 <component name="FaithSaverScene" extends="Scene">
   <children>
-    <!-- Single Poster for simplicity; we’ll set a local image immediately -->
-    <Poster id="img"
-            width="1920" height="1080"
-            loadDisplayMode="scaleToFill" />
+    <Poster id="img" width="1920" height="1080" loadDisplayMode="scaleToFill" />
+    <Task id="loader" type="URLTask" />
   </children>
   <script type="text/brightscript" uri="pkg:/components/FaithSaverScene.brs" />
 </component>

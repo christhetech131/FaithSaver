@@ -1,24 +1,43 @@
-' FaithSaver runtime: show local fallback immediately, then remote; rotate every 5 minutes
-
 sub init()
   m.img = m.top.findNode("img")
+  m.loader = m.top.findNode("loader")
   m.base = "https://christhetech131.github.io/FaithSaver"
   m.index = invalid
 
-  ' Always show something right away (prevents “frozen” preview)
+  ' Show local image immediately (prevents blank preview)
   ShowLocalFallback()
 
-  ' 5-minute rotation timer
+  ' Observe Task results
+  m.loader.observeField("response", "onLoaded")
+  m.loader.observeField("error", "onLoadError")
+
+  ' Start fetch (off UI thread)
+  m.loader.url = m.base + "/index.json?t=" + CreateObject("roDateTime").AsSeconds().ToStr()
+  m.loader.control = "run"
+
+  ' Rotation
   m.rotateTimer = CreateObject("roSGNode","Timer")
   m.rotateTimer.duration = 300
   m.rotateTimer.observeField("fire","onRotate")
   m.top.appendChild(m.rotateTimer)
-
-  ' Fetch remote index.json asynchronously
-  FetchIndex(true)
+  m.rotateTimer.control = "start"
 end sub
 
-' -------- category picking --------
+sub onLoaded()
+  data = m.loader.response
+  j = invalid
+  if data <> invalid then j = ParseJson(data)
+  if j <> invalid and j.categories <> invalid then
+    m.index = j
+    ShowRandom() ' swap to remote ASAP
+  end if
+end sub
+
+sub onLoadError()
+  ' Stay on local fallback; nothing to do
+end sub
+
+' ------- helper funcs -------
 function EffectiveCategory() as string
   reg = CreateObject("roRegistrySection","FaithSaver")
   saved = LCase(reg.Read("category"))
@@ -33,86 +52,29 @@ function EffectiveCategory() as string
   return saved
 end function
 
-' -------- offline fallbacks --------
 function LocalFallbacks() as Object
-  ' If you kept a single default.jpg, point all keys to it; otherwise include per-category jpgs.
-  return {
-    animals:  ["pkg:/images/offline/default.jpg"]
-    fall:     ["pkg:/images/offline/default.jpg"]
-    geology:  ["pkg:/images/offline/default.jpg"]
-    scenery:  ["pkg:/images/offline/default.jpg"]
-    space:    ["pkg:/images/offline/default.jpg"]
-    spring:   ["pkg:/images/offline/default.jpg"]
-    summer:   ["pkg:/images/offline/default.jpg"]
-    textures: ["pkg:/images/offline/default.jpg"]
-    winter:   ["pkg:/images/offline/default.jpg"]
-  }
+  return { animals:["pkg:/images/offline/default.jpg"], fall:["pkg:/images/offline/default.jpg"],
+           geology:["pkg:/images/offline/default.jpg"], scenery:["pkg:/images/offline/default.jpg"],
+           space:["pkg:/images/offline/default.jpg"], spring:["pkg:/images/offline/default.jpg"],
+           summer:["pkg:/images/offline/default.jpg"], textures:["pkg:/images/offline/default.jpg"],
+           winter:["pkg:/images/offline/default.jpg"] }
 end function
 
 sub ShowLocalFallback()
-  lf = LocalFallbacks()
-  cat = EffectiveCategory()
-  list = lf[cat]
+  list = LocalFallbacks()[EffectiveCategory()]
   if list = invalid or list.count() = 0 then list = ["pkg:/images/offline/default.jpg"]
   m.img.uri = list[0]
 end sub
 
-' -------- remote index fetch --------
-sub FetchIndex(startRotation as boolean)
-  url = m.base + "/index.json?t=" + CreateObject("roDateTime").AsSeconds().ToStr()
-  port = CreateObject("roMessagePort")
-  xfer = CreateObject("roUrlTransfer")
-  xfer.SetMessagePort(port)
-  xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
-  xfer.InitClientCertificates()
-  xfer.SetUrl(url)
-  xfer.AsyncGetToString()
-
-  timeout = CreateObject("roTimespan") : timeout.Mark()
-  maxWaitMs = 7000
-
-  while true
-    msg = wait(250, port)
-    if type(msg) = "roUrlEvent" then
-      if msg.GetResponseCode() = 200 then
-        j = ParseJson(msg.GetString())
-        if j <> invalid and j.categories <> invalid then
-          m.index = j
-          if startRotation then m.rotateTimer.control = "start"
-          ShowRandom() ' swap from local to remote ASAP
-          return
-        end if
-      end if
-      exit while ' error → stay on local fallback
-    end if
-    if timeout.TotalMilliseconds() > maxWaitMs then exit while
-  end while
-
-  if startRotation then m.rotateTimer.control = "start"
-end sub
-
-' -------- image selection --------
 sub ShowRandom()
   if m.index = invalid then return
-  cat = EffectiveCategory()
-
-  list = m.index.categories[cat]
+  list = m.index.categories[EffectiveCategory()]
   if list = invalid or list.count() = 0 then return
-
   idx = int(Rnd(0) * list.count())
   p = list[idx]
-
-  if Left(p,1) = "/" then
-    m.img.uri = m.base + p
-  else
-    m.img.uri = p ' supports pkg:/ paths if ever needed
-  end if
+  if Left(p,1) = "/" then m.img.uri = m.base + p else m.img.uri = p
 end sub
 
 sub onRotate()
-  if m.index <> invalid then
-    ShowRandom()
-  else
-    ShowLocalFallback()
-  end if
+  if m.index <> invalid then ShowRandom() else ShowLocalFallback()
 end sub

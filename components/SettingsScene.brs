@@ -1,10 +1,9 @@
-' FaithSaver settings: 10 options (Seasonal + 9 categories)
 sub init()
   m.list  = m.top.findNode("list")
   m.title = m.top.findNode("title")
   m.hint  = m.top.findNode("hint")
 
-  ' Build menu
+  ' Build menu content
   m.options = BuildOptionsWithSeason()
   root = CreateObject("roSGNode","ContentNode")
   for each opt in m.options
@@ -13,24 +12,20 @@ sub init()
     root.appendChild(n)
   end for
   m.list.content = root
-
-  ' Make sure the list can be selected via OK
   m.list.selectable = true
-  m.list.observeField("itemSelected", "onItemSelected")
-  m.list.observeField("itemFocused",  "onItemFocused")
 
-  ' Pre-select saved choice
+  ' glue: let each row know its focus state so it can draw the bar
+  m.list.observeField("itemFocused", "onItemFocused")
+  m.list.observeField("itemSelected","onItemSelected")
+
+  ' preselect saved
   reg = CreateObject("roRegistrySection","FaithSaver")
   saved = LCase(reg.Read("category"))
   if saved = invalid or saved = "" then saved = "animals"
   for i = 0 to m.options.count()-1
-    if LCase(m.options[i].key) = saved then
-      m.list.jumpToItem = i
-      exit for
-    end if
+    if LCase(m.options[i].key) = saved then m.list.jumpToItem = i : exit for
   end for
 
-  ' Ensure keyboard focus lands on the list
   m.top.setFocus(true)
   m.list.setFocus(true)
 end sub
@@ -59,11 +54,20 @@ function CurrentSeasonName() as string
   return "winter"
 end function
 
+sub onItemFocused()
+  ' propagate focus to visible row component so it can show the blue bar
+  idx = m.list.itemFocused
+  for i = 0 to m.list.visibleChildCount()-1
+    row = m.list.getChild(i)
+    if row <> invalid then row.isFocused = (m.list.itemFocusedVisibleIndex = i)
+  end for
+end sub
+
 sub onItemSelected()
   idx = m.list.itemSelected
   if idx < 0 or idx >= m.options.count() then return
-
   choice = m.options[idx].key
+
   reg = CreateObject("roRegistrySection","FaithSaver")
   reg.Write("category", choice)
   reg.Flush()
@@ -71,23 +75,18 @@ sub onItemSelected()
   m.title.text = "Saved: " + m.options[idx].title + "   (Back to close)"
 end sub
 
-sub onItemFocused()
-  idx = m.list.itemFocused
-  if idx < 0 or idx >= m.options.count() then return
-  opt = m.options[idx]
-  if LCase(opt.key) = "seasonal" then
-    m.hint.text = "Auto-selects by date → " + CurrentSeasonName() + "   (OK = Save)"
-  else
-    m.hint.text = "Category: " + opt.title + "   (OK = Save)"
-  end if
-end sub
-
-' Make Back exit settings. Return TRUE to consume the key.
 function onKeyEvent(key as string, press as boolean) as boolean
   if not press then return false
   if key = "back" then
     m.top.close = true
     return true
+  else if key = "OK" then
+    ' Make OK always save even if an event didn’t fire for some reason
+    idx = m.list.itemFocused
+    if idx >= 0 then
+      m.list.itemSelected = idx
+      return true
+    end if
   end if
   return false
 end function
