@@ -1,5 +1,15 @@
-screensaver_title=FaithSaver
+title=FaithSaver
+subtitle=Seasonal image screensaver
 major_version=1
-minor_version=0
-build_version=00001
-ui_resolutions=fhd
+minor_version=2
+build_version=00004
+
+# App selection icon (focus). SD fields are optional for modern devices.
+mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-540x405.jpg
+mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
+
+# Splash screens
+splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
+splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
+splash_color=#0b1f2e         ; background while splash loads
+splash_min_time=1000         ; 1 second minimum display
