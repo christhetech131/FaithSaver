@@ -1,28 +1,39 @@
-' Entrypoints for the screensaver and its Settings UI
+' FaithSaver — Screensaver entrypoints (focus-safe + close polling)
 
 sub RunScreenSaver()
-  m.port = CreateObject("roMessagePort")
-  m.sg = CreateObject("roSGScreen")
-  m.sg.SetMessagePort(m.port)
-  scene = m.sg.CreateScene("FaithSaverScene")
-  m.sg.Show()
+    screen = CreateObject("roSGScreen")
+    port   = CreateObject("roMessagePort")
+    screen.SetMessagePort(port)
 
-  while true
-    msg = wait(0, m.port)
-    if type(msg) = "roSGScreenEvent" and msg.IsScreenClosed() then return
-  end while
+    scene = screen.CreateScene("FaithSaverScene")
+    ' Scene will take focus in its init()
+    screen.Show()
+
+    while true
+        msg = wait(100, port) ' short poll so we can also check scene.close
+        if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return
+        ' Poll the scene's close flag (set by onKeyEvent Back)
+        if scene.close = true then
+            screen.Close()
+            return
+        end if
+    end while
 end sub
 
-' Invoked by Roku when user opens the screensaver's Settings
 sub RunScreenSaverSettings()
-  port = CreateObject("roMessagePort")
-  screen = CreateObject("roSGScreen")
-  screen.SetMessagePort(port)
-  settingsScene = screen.CreateScene("SettingsScene")
-  screen.Show()
+    screen = CreateObject("roSGScreen")
+    port   = CreateObject("roMessagePort")
+    screen.SetMessagePort(port)
 
-  while true
-    msg = wait(0, port)
-    if type(msg) = "roSGScreenEvent" and msg.IsScreenClosed() then return
-  end while
+    scene = screen.CreateScene("SettingsScene")
+    screen.Show()
+
+    while true
+        msg = wait(100, port)
+        if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return
+        if scene.close = true then
+            screen.Close()
+            return
+        end if
+    end while
 end sub

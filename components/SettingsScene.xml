@@ -1,17 +1,41 @@
 <component name="SettingsScene" extends="Scene">
+  <interface>
+    <field id="close" type="boolean" alwaysNotify="true" />
+  </interface>
+
   <children>
-    <Poster id="bg" uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
-            width="1920" height="1080" loadDisplayMode="scaleToFill" />
-    <Rectangle id="overlay" width="1920" height="1080" color="0xFFFFFF40" />
-    <Label id="title" translation="[120,80]" font="Medium" text="FaithSaver Settings" color="0x000000FF" />
-    <LabelList id="list"
-               translation="[120,160]"
-               itemSize="[1680, 72]"
-               numRows="10"
-               drawFocusFeedback="false"
-               itemComponentName="SettingsRow" />
-    <Label id="hint" translation="[120, 980]" font="Small" color="0x000000FF"
-           text="OK = Select    |    Back = Close" />
+    <!-- Background image -->
+    <Poster
+      id="bg"
+      uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+      width="1920"
+      height="1080"
+      loadDisplayMode="scaleToFill" />
+
+    <!-- Contrast overlay (RGBA: white, ~25% opacity) -->
+    <Rectangle
+      width="1920"
+      height="1080"
+      color="0xFFFFFF40" />
+
+    <!-- Title and hint (RGBA black) -->
+    <Label
+      id="title"
+      translation="[120,80]"
+      color="0x000000FF"
+      text="FaithSaver Settings" />
+
+    <!-- We draw rows manually inside this group -->
+    <Group
+      id="menu"
+      translation="[120,160]" />
+
+    <Label
+      id="hint"
+      translation="[120,980]"
+      color="0x000000FF"
+      text="Up/Down: Move   OK: Save   Back: Exit" />
   </children>
+
   <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
 </component>
