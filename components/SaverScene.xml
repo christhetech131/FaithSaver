@@ -1,0 +1,15 @@
+<component name="SaverScene" extends="Scene">
+  <interface>
+    <field id="mode" type="string" value="preview" />
+    <field id="close" type="boolean" alwaysNotify="true" />
+  </interface>
+
+  <children>
+    <Rectangle id="bg" width="1920" height="1080" color="0x000000FF" />
+    <Poster id="img" width="1920" height="1080" loadDisplayMode="scaleToFill" visible="true" />
+    <Timer id="tick" duration="5.0" repeat="true" control="stop" />
+    <Label id="hint" translation="[40,1000]" color="0xFFFFFFFF" text="" />
+  </children>
+
+  <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
+</component>

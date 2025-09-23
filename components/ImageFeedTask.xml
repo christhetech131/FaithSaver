@@ -1,0 +1,7 @@
+<component name="ImageFeedTask" extends="Task">
+  <interface>
+    <field id="category" type="string" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ImageFeedTask.brs" />
+</component>
