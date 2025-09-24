@@ -5,7 +5,8 @@ sub init()
   m.img  = m.top.findNode("img")
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
-
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 180.0      ' 3 minutes per updated requirement
   m.previewDuration = 5.0       ' seconds
   m.saverDuration   = 300.0     ' 5 minutes per project requirements
   m.defaultUri      = "pkg:/images/offline/default.jpg"
@@ -63,6 +64,7 @@ sub ConfigurePreview()
   m.offlineUris = OfflineAllUris()
   m.uris = CloneArray(m.offlineUris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  m.idx = 0
   SetImage(0)
   m.tick.control = "start"
 end sub
@@ -74,6 +76,7 @@ sub ConfigureScreensaver()
   m.offlineUris = OfflineForSaved()
   m.uris = CloneArray(m.offlineUris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  m.idx = 0
   SetImage(0)
   StartFeedTask()
   m.tick.control = "start"
@@ -215,6 +218,11 @@ end function
 
 ' Display image at index i (wraps around)
 sub SetImage(i as Integer)
+  if m.img = invalid then
+    print "SaverScene SetImage -> Poster node missing"
+    return
+  end if
+
   if m.uris = invalid then return
   total = m.uris.count()
   if total = 0 then return
@@ -284,14 +292,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
   else if m.mode = "screensaver" then
-    if lower = "back" then
-      m.top.close = true
-      return true
-    else if lower = "up" or lower = "down" or lower = "ok" then
-      ' Consume navigation keys in saver mode so the system does not treat the session like preview
-      return true
-    end if
-    return false
+    ' Any key press should dismiss the saver and return control to Roku
+    m.top.close = true
+    return true
   end if
 
   return false
