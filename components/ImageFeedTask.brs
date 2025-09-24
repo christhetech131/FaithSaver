@@ -87,6 +87,14 @@ function NormalizeEntry(item as Dynamic, root as String) as String
   if entry = "" then
     return ""
   end if
+  entry = TrimWhitespace(item)
+  if entry = "" then
+    return ""
+  end if
+  if t <> "roString" and t <> "String" then return ""
+
+  entry = TrimWhitespace(item)
+  if entry = "" then return ""
 
   lower = LCase(entry)
   if Left(lower, 8) = "https://" or Left(lower, 7) = "http://" then
@@ -124,6 +132,22 @@ function TrimWhitespace(input as Dynamic) as String
   if t <> "roString" and t <> "String" then
     return ""
   end if
+  end if
+
+  t = type(input)
+  if t <> "roString" and t <> "String" then
+    return ""
+  end if
+
+  text = input
+  total = Len(text)
+  if total <= 0 then
+    return ""
+  end if
+  if input = invalid then return ""
+
+  t = type(input)
+  if t <> "roString" and t <> "String" then return ""
 
   text = input
   total = Len(text)
@@ -152,6 +176,7 @@ function TrimWhitespace(input as Dynamic) as String
   if endIndex < startIndex then
     return ""
   end if
+  if endIndex < startIndex then return ""
 
   return Mid(text, startIndex + 1, endIndex - startIndex + 1)
 end function
