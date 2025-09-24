@@ -2,13 +2,14 @@
 ' Uses ImageFeedTask to fetch index.json on a background thread.
 
 sub init()
+  Randomize()
+
   m.img  = m.top.findNode("img")
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
 
-  m.previewDuration = 5.0       ' seconds
-  m.saverDuration   = 300.0     ' 5 minutes per project requirements
-  m.saverDuration   = 300.0     ' 5 minutes per latest requirements
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 180.0      ' 3 minutes per updated production cadence
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
@@ -23,12 +24,14 @@ sub init()
   m.offlineUris = CreateObject("roArray", 0, true)
 
   m.tick.observeField("fire", "onTick")
-  m.tick.control = "stop"
+  if m.tick <> invalid then m.tick.control = "stop"
   m.tick.repeat = true
   m.hint.visible = false
 
   m.top.observeField("mode", "onModeChanged")
   m.top.observeField("close", "onCloseChanged")
+
+  m.top.close = false
   onModeChanged()
 
   m.top.setFocus(true)
@@ -38,23 +41,8 @@ sub onModeChanged()
   modeValue = m.top.mode
   if modeValue = invalid then modeValue = ""
   nextMode = LCase(modeValue)
-  if nextMode <> "preview" and nextMode <> "screensaver" then
-    nextMode = "preview"
-  end if
-
-  if nextMode = m.mode then return
-
-  print "SaverScene onModeChanged -> " ; nextMode
-
-  m.mode = nextMode
-  m.tick.control = "stop"
-  StopFeedTask()
-
-
-  m.mode = nextMode
-  m.tick.control = "stop"
-  StopFeedTask()
-
+  if nextMode = "" then return
+  if nextMode <> "preview" and nextMode <> "screensaver" then return
 
   if nextMode = m.mode then return
 
@@ -72,49 +60,39 @@ sub onModeChanged()
 end sub
 
 sub ConfigurePreview()
-  m.hint.visible = true
-  m.hint.text = m.previewHint
-  m.tick.duration = m.previewDuration
+  if m.hint <> invalid then
+    m.hint.visible = true
+    m.hint.text = m.previewHint
+  end if
+  if m.tick <> invalid then m.tick.duration = m.previewDuration
   m.offlineUris = OfflineAllUris()
   m.uris = CloneArray(m.offlineUris)
+  ShuffleArray(m.uris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  m.idx = 0
   SetImage(0)
-  m.tick.control = "start"
-end sub
-
-  m.tick.control = "start"
+  if m.tick <> invalid then m.tick.control = "start"
 end sub
 
 sub ConfigureScreensaver()
-  m.hint.text = ""
-  m.hint.visible = false
-  m.tick.duration = m.saverDuration
+  if m.hint <> invalid then
+    m.hint.text = ""
+    m.hint.visible = false
+  end if
+  if m.tick <> invalid then m.tick.duration = m.saverDuration
   m.offlineUris = OfflineForSaved()
   m.uris = CloneArray(m.offlineUris)
+  ShuffleArrayRange(m.uris, 1)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  m.idx = 0
   SetImage(0)
   StartFeedTask()
-  m.tick.control = "start"
-end sub
-
-  m.tick.control = "start"
-end sub
-
-sub ConfigureScreensaver()
-  m.hint.text = ""
-  m.hint.visible = false
-  m.tick.duration = m.saverDuration
-  m.offlineUris = OfflineForSaved()
-  m.uris = CloneArray(m.offlineUris)
-  if m.uris.count() = 0 then m.uris.push(m.defaultUri)
-  SetImage(0)
-  StartFeedTask()
-  m.tick.control = "start"
+  if m.tick <> invalid then m.tick.control = "start"
 end sub
 
 sub onCloseChanged()
   if m.top.close = true then
-    m.tick.control = "stop"
+    if m.tick <> invalid then m.tick.control = "stop"
     StopFeedTask()
   end if
 end sub
@@ -193,17 +171,10 @@ end function
 
 ' Launch the background task that fetches the GitHub index.json
 sub StartFeedTask()
+  StopFeedTask()
+
   reg = CreateObject("roRegistrySection", "FaithSaver")
   sel = reg.Read("category")
-  if sel = invalid then sel = ""
-  sel = LCase(sel)
-
-  StopFeedTask()
-
-  actual = NormalizeSavedCategory(sel)
-
-  StopFeedTask()
-
   actual = NormalizeSavedCategory(sel)
 
   m.feed = CreateObject("roSGNode", "ImageFeedTask")
@@ -211,11 +182,6 @@ sub StartFeedTask()
   m.feed.observeField("result", "onFeed")
   m.top.appendChild(m.feed)
   print "SaverScene StartFeedTask -> saved=" ; sel ; " actual=" ; actual
-  m.feed = CreateObject("roSGNode","ImageFeedTask")
-  m.feed.category = sel
-  m.feed.observeField("result","onFeed")
-  m.top.appendChild(m.feed)
-  print "SaverScene StartFeedTask -> category="; sel
   m.feed.control = "run"
 end sub
 
@@ -228,7 +194,7 @@ sub onFeed()
   if type(result) = "roAssociativeArray" then
     uris = result.uris
     if type(uris) = "roArray" and uris.count() > 0 then
-      combined = MergeWithOffline(uris, m.offlineUris)
+      combined = BuildSaverPlaylist(uris, m.offlineUris)
       if combined.count() = 0 then combined = CloneArray(m.offlineUris)
       m.uris = combined
       m.idx = 0
@@ -236,7 +202,6 @@ sub onFeed()
       print "SaverScene onFeed -> swapping to remote URIs count=" ; m.uris.count()
       StopFeedTask()
       return
-      print "SaverScene onFeed -> swapping to remote URIs count="; m.uris.count()
     end if
   end if
 
@@ -261,6 +226,11 @@ end function
 
 ' Display image at index i (wraps around)
 sub SetImage(i as Integer)
+  if m.img = invalid then
+    print "SaverScene SetImage -> Poster node missing"
+    return
+  end if
+
   if m.uris = invalid then return
   total = m.uris.count()
   if total = 0 then return
@@ -276,91 +246,8 @@ sub SetImage(i as Integer)
   attempts = 0
   idx = i
   while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
-      m.idx = idx
-      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
-      m.img.visible = true
-      m.img.uri = uri
-      return
-    end if
-    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
-    idx = (idx + 1) mod total
-    attempts = attempts + 1
-  end while
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  attempts = 0
-  idx = i
-  while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
-      m.idx = idx
-      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
-      m.img.visible = true
-      m.img.uri = uri
-      return
-    end if
-    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
-    idx = (idx + 1) mod total
-    attempts = attempts + 1
-  end while
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  attempts = 0
-  idx = i
-  while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
-      m.idx = idx
-      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
-      m.img.visible = true
-      m.img.uri = uri
-      return
-    end if
-    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
-    idx = (idx + 1) mod total
-    attempts = attempts + 1
-  end while
-
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  m.idx = i
-
-  attempts = 0
-  idx = i
-  while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
+    uri = NormalizeUriString(m.uris[idx])
+    if uri <> "" then
       m.idx = idx
       print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
       m.img.visible = true
@@ -373,6 +260,9 @@ sub SetImage(i as Integer)
   end while
 
   print "SaverScene SetImage -> no valid URIs available"
+  m.img.visible = true
+  m.img.uri = m.defaultUri
+  m.idx = 0
 end sub
 
 ' Skip to next image if a uri fails to load
@@ -410,14 +300,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
   else if m.mode = "screensaver" then
-    if lower = "back" then
-      m.top.close = true
-      return true
-    else if lower = "up" or lower = "down" or lower = "ok" then
-      ' Consume navigation keys in saver mode so the system does not treat the session like preview
-      return true
-    end if
-    return false
+    ' Any key press should dismiss the saver and return control to Roku
+    m.top.close = true
+    return true
   end if
 
   return false
@@ -436,39 +321,135 @@ function CloneArray(arr as Object) as Object
   return copy
 end function
 
-function MergeWithOffline(remote as Object, offline as Object) as Object
+function BuildSaverPlaylist(remote as Object, offline as Object) as Object
   result = CreateObject("roArray", 0, true)
   seen = CreateObject("roAssociativeArray")
 
+  ' Always start with the offline category image when available
+  fallback = CreateObject("roArray", 0, true)
+  if type(offline) = "roArray" then
+    if offline.count() > 0 then
+      primary = NormalizeUriString(offline[0])
+      if primary <> "" then
+        result.push(primary)
+        seen[primary] = true
+      end if
+    end if
+
+    i = 1
+    while i < offline.count()
+      uri = NormalizeUriString(offline[i])
+      if uri <> "" then fallback.push(uri)
+      i = i + 1
+    end while
+  end if
+
+  ' Collect unique remote URIs and shuffle them
+  remoteList = CreateObject("roArray", 0, true)
+  remoteSeen = CreateObject("roAssociativeArray")
   if type(remote) = "roArray" then
     i = 0
     while i < remote.count()
       uri = NormalizeUriString(remote[i])
-      if uri <> "" and not seen.doesExist(uri) then
-        seen[uri] = true
-        result.push(uri)
+      if uri <> "" and not remoteSeen.doesExist(uri) and not seen.doesExist(uri) then
+        remoteList.push(uri)
+        remoteSeen[uri] = true
       end if
       i = i + 1
     end while
   end if
 
-  if type(offline) = "roArray" then
-    i = 0
-    while i < offline.count()
-      uri = NormalizeUriString(offline[i])
-      if uri <> "" and not seen.doesExist(uri) then
-        seen[uri] = true
-        result.push(uri)
-      end if
-      i = i + 1
-    end while
-  end if
+  ShuffleArray(remoteList)
+
+  i = 0
+  while i < remoteList.count()
+    uri = remoteList[i]
+    if not seen.doesExist(uri) then
+      result.push(uri)
+      seen[uri] = true
+    end if
+    i = i + 1
+  end while
+
+  ' Append any remaining offline fallbacks so rotation never runs dry
+  i = 0
+  while i < fallback.count()
+    uri = fallback[i]
+    if uri <> "" and not seen.doesExist(uri) then
+      result.push(uri)
+      seen[uri] = true
+    end if
+    i = i + 1
+  end while
 
   return result
 end function
 
 function NormalizeUriString(val as Dynamic) as String
-  if type(val) <> "roString" then return ""
-  trimmed = LTrim(RTrim(val))
-  return trimmed
+  t = type(val)
+  if t <> "roString" and t <> "String" then return ""
+  return TrimWhitespace(val)
+end function
+
+sub ShuffleArray(arr as Object)
+  ShuffleArrayRange(arr, 0)
+end sub
+
+sub ShuffleArrayRange(arr as Object, firstIndex as Integer)
+  if type(arr) <> "roArray" then return
+
+  total = arr.count()
+  if total <= firstIndex + 1 then return
+
+  i = total - 1
+  while i > firstIndex
+    span = i - firstIndex
+    j = firstIndex + GetRandomOffset(span)
+    if j <> i then
+      tmp = arr[i]
+      arr[i] = arr[j]
+      arr[j] = tmp
+    end if
+    i = i - 1
+  end while
+end sub
+
+function GetRandomOffset(maxOffset as Integer) as Integer
+  if maxOffset <= 0 then return 0
+
+  value = Rnd(1)
+  if value < 0 then value = -value
+
+  idx = Int(value * (maxOffset + 1))
+  if idx > maxOffset then idx = maxOffset
+
+  return idx
+end function
+
+function TrimWhitespace(input as Dynamic) as String
+  if input = invalid then return ""
+
+  if type(input) <> "roString" and type(input) <> "String" then return ""
+
+  text = input
+  total = Len(text)
+  if total <= 0 then return ""
+
+  startIndex = 0
+  while startIndex < total
+    ch = Asc(Mid(text, startIndex + 1, 1))
+    if ch > 32 then exit while
+    startIndex = startIndex + 1
+  end while
+
+  endIndex = total - 1
+  while endIndex >= startIndex
+    ch = Asc(Mid(text, endIndex + 1, 1))
+    if ch > 32 then exit while
+    endIndex = endIndex - 1
+  end while
+
+  if endIndex < startIndex then return ""
+
+  return Mid(text, startIndex + 1, endIndex - startIndex + 1)
 end function

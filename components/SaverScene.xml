@@ -2,7 +2,7 @@
   <interface>
     <!-- `mode` is assigned by the entry point before the scene is shown. -->
     <field id="mode" type="string" value="" />
-    <field id="close" type="boolean" alwaysNotify="true" />
+    <field id="close" type="boolean" value="false" alwaysNotify="true" />
   </interface>
 
   <children>
