@@ -46,14 +46,20 @@
         color="0xFFFFFFFF"
         opacity="0.94" />
       <Label
-        translation="[440,280]"
+        id="aboutTitle"
+        translation="[440,260]"
         width="1040"
-        height="560"
-        wrap="true"
-        horizAlign="center"
+        height="40"
+        horizAlign="left"
         vertAlign="top"
         color="0x000000FF"
-        text="FaithSaver Screensaver\n\nVersion info and credits will appear here in a future update. Press Back or OK to return." />
+        text="About FaithSaver" />
+      <ScrollableText
+        id="aboutText"
+        translation="[440,320]"
+        width="1040"
+        height="520"
+        text="Loading README..." />
     </Group>
   </children>
 

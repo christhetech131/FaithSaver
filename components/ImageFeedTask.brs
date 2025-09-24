@@ -58,6 +58,7 @@ end sub
 
 function NormalizeEntry(item as Dynamic, root as String) as String
   if type(item) <> "roString" then return ""
+  entry = TrimWhitespace(item)
   entry = LTrim(RTrim(item))
   if entry = "" then return ""
 
@@ -83,4 +84,30 @@ function CurrentSeasonName() as String
   else
     return "winter"
   end if
+end function
+
+function TrimWhitespace(input as String) as String
+  if input = invalid then return ""
+
+  text = input
+  total = Len(text)
+  if total <= 0 then return ""
+
+  startIndex = 0
+  while startIndex < total
+    ch = Asc(Mid(text, startIndex + 1, 1))
+    if ch > 32 then exit while
+    startIndex = startIndex + 1
+  end while
+
+  endIndex = total - 1
+  while endIndex >= startIndex
+    ch = Asc(Mid(text, endIndex + 1, 1))
+    if ch > 32 then exit while
+    endIndex = endIndex - 1
+  end while
+
+  if endIndex < startIndex then return ""
+
+  return Mid(text, startIndex + 1, endIndex - startIndex + 1)
 end function

@@ -6,6 +6,8 @@ sub init()
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
   m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 300.0      ' 5 minutes per product requirements
+  m.previewDuration = 5.0        ' seconds
   m.saverDuration   = 180.0      ' 3 minutes per updated requirement
   m.previewDuration = 5.0       ' seconds
   m.saverDuration   = 300.0     ' 5 minutes per project requirements
@@ -345,6 +347,34 @@ function MergeWithOffline(remote as Object, offline as Object) as Object
 end function
 
 function NormalizeUriString(val as Dynamic) as String
+  if type(val) <> "roString" then return ""
+  return TrimWhitespace(val)
+end function
+
+function TrimWhitespace(input as String) as String
+  if input = invalid then return ""
+
+  text = input
+  total = Len(text)
+  if total <= 0 then return ""
+
+  startIndex = 0
+  while startIndex < total
+    ch = Asc(Mid(text, startIndex + 1, 1))
+    if ch > 32 then exit while
+    startIndex = startIndex + 1
+  end while
+
+  endIndex = total - 1
+  while endIndex >= startIndex
+    ch = Asc(Mid(text, endIndex + 1, 1))
+    if ch > 32 then exit while
+    endIndex = endIndex - 1
+  end while
+
+  if endIndex < startIndex then return ""
+
+  return Mid(text, startIndex + 1, endIndex - startIndex + 1)
   if type(val) = "roString" then
     trimmed = LTrim(RTrim(val))
     return trimmed
