@@ -11,30 +11,43 @@ sub go()
   else
     cat = ""
   end if
+
   if cat = "seasonal" or cat = "" then
     cat = CurrentSeasonName()
   end if
 
   rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
-
   url = rawRoot + "index.json"
-  ut  = CreateObject("roUrlTransfer")
-  ut.SetCertificatesFile("common:/certs/ca-bundle.crt")
-  ut.SetUrl(url)
-  ut.SetRequest("GET")
-  jsonStr = ut.GetToString()
-  code = ut.GetResponseCode()
+
+  jsonStr = ""
+  code = 0
+
+  ut = CreateObject("roUrlTransfer")
+  if ut <> invalid then
+    ut.SetCertificatesFile("common:/certs/ca-bundle.crt")
+    ut.SetUrl(url)
+    ut.SetRequest("GET")
+    jsonStr = ut.GetToString()
+    code = ut.GetResponseCode()
+  end if
 
   uris = CreateObject("roArray", 20, true)
   seen = CreateObject("roAssociativeArray")
 
   if type(jsonStr) = "roString" or type(jsonStr) = "String" then
-    if Len(jsonStr) > 0 then
+    if code = 200 and Len(jsonStr) > 0 then
       data = ParseJson(jsonStr)
       if type(data) = "roAssociativeArray" then
         cats = data.categories
         if type(cats) = "roAssociativeArray" then
           list = cats[cat]
+          if type(list) <> "roArray" and cat <> "animals" then
+            list = cats["animals"]
+            if type(list) = "roArray" then
+              print "ImageFeedTask warning -> category"; cat; " missing, using animals"
+            end if
+          end if
+
           if type(list) = "roArray" then
             i = 0
             while i < list.count()
@@ -47,31 +60,17 @@ sub go()
               i = i + 1
             end while
           end if
-  if code = 200 and jsonStr <> invalid and jsonStr <> "" then
-    data = ParseJson(jsonStr)
-    if type(data) = "roAssociativeArray" then
-      cats = data.categories
-      if type(cats) = "roAssociativeArray" then
-        list = cats[cat]
-        if type(list) = "roArray" then
-          i = 0
-          while i < list.count()
-            item = list[i]
-            uri = NormalizeEntry(item, rawRoot)
-            if uri <> "" and not seen.doesExist(uri) then
-              seen[uri] = true
-              uris.push(uri)
-            end if
-            i = i + 1
-          end while
+        else
+          print "ImageFeedTask warning -> categories missing"
         end if
+      else
+        print "ImageFeedTask warning -> invalid JSON payload"
       end if
     else
-      print "ImageFeedTask warning -> empty JSON body"
+      print "ImageFeedTask warning -> http"; code; " body ignored"
     end if
   else
     print "ImageFeedTask warning -> empty response"
-    print "ImageFeedTask warning -> http"; code; " body ignored"
   end if
 
   print "ImageFeedTask complete -> category="; cat; " count="; uris.count()
@@ -80,19 +79,23 @@ end sub
 
 function NormalizeEntry(item as Dynamic, root as String) as String
   t = type(item)
-  if t <> "roString" and t <> "String" then return ""
+  if t <> "roString" and t <> "String" then
+    return ""
+  end if
+
   entry = TrimWhitespace(item)
-  if type(item) <> "roString" then return ""
-  entry = TrimWhitespace(item)
-  entry = LTrim(RTrim(item))
-  if entry = "" then return ""
+  if entry = "" then
+    return ""
+  end if
 
   lower = LCase(entry)
   if Left(lower, 8) = "https://" or Left(lower, 7) = "http://" then
     return entry
   end if
 
-  if Left(entry, 1) = "/" then entry = Mid(entry, 2)
+  if Left(entry, 1) = "/" then
+    entry = Mid(entry, 2)
+  end if
   return root + entry
 end function
 
@@ -113,71 +116,42 @@ function CurrentSeasonName() as String
 end function
 
 function TrimWhitespace(input as Dynamic) as String
-  if input = invalid then return ""
-
-  t = type(input)
-  if t <> "roString" and t <> "String" then return ""
-
-  text = input
-  total = Len(text)
-  if total <= 0 then return ""
-
-  startIndex = 0
-  while startIndex < total
-    ch = Asc(Mid(text, startIndex + 1, 1))
-    if ch > 32 then exit while
-    startIndex = startIndex + 1
-  end while
-
-  endIndex = total - 1
-  while endIndex >= startIndex
-    ch = Asc(Mid(text, endIndex + 1, 1))
-    if ch > 32 then exit while
-    endIndex = endIndex - 1
-  end while
-
-  if endIndex < startIndex then return ""
-
-  return Mid(text, startIndex + 1, endIndex - startIndex + 1)
-  if mth = 3 or mth = 4 or mth = 5 then
-    return "spring"
-  else if mth = 6 or mth = 7 or mth = 8 then
-    return "summer"
-  else if mth = 9 or mth = 10 or mth = 11 then
-    return "fall"
-  else
-    return "winter"
+  if input = invalid then
+    return ""
   end if
-end function
-
-function TrimWhitespace(input as Dynamic) as String
-  if input = invalid then return ""
 
   t = type(input)
-  if t <> "roString" and t <> "String" then return ""
-
-function TrimWhitespace(input as String) as String
-  if input = invalid then return ""
+  if t <> "roString" and t <> "String" then
+    return ""
+  end if
 
   text = input
   total = Len(text)
-  if total <= 0 then return ""
+  if total <= 0 then
+    return ""
+  end if
 
   startIndex = 0
   while startIndex < total
     ch = Asc(Mid(text, startIndex + 1, 1))
-    if ch > 32 then exit while
+    if ch > 32 then
+      exit while
+    end if
     startIndex = startIndex + 1
   end while
 
   endIndex = total - 1
   while endIndex >= startIndex
     ch = Asc(Mid(text, endIndex + 1, 1))
-    if ch > 32 then exit while
+    if ch > 32 then
+      exit while
+    end if
     endIndex = endIndex - 1
   end while
 
-  if endIndex < startIndex then return ""
+  if endIndex < startIndex then
+    return ""
+  end if
 
   return Mid(text, startIndex + 1, endIndex - startIndex + 1)
 end function
