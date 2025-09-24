@@ -8,6 +8,12 @@ sub init()
 
   m.previewDuration = 5.0        ' seconds
   m.saverDuration   = 300.0      ' 5 minutes per product requirements
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 300.0      ' 5 minutes per product requirements
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 180.0      ' 3 minutes per updated requirement
+  m.previewDuration = 5.0       ' seconds
+  m.saverDuration   = 300.0     ' 5 minutes per project requirements
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
@@ -374,4 +380,9 @@ function TrimWhitespace(input as String) as String
   if endIndex < startIndex then return ""
 
   return Mid(text, startIndex + 1, endIndex - startIndex + 1)
+  if type(val) = "roString" then
+    trimmed = LTrim(RTrim(val))
+    return trimmed
+  end if
+  return ""
 end function
