@@ -1,8 +1,7 @@
-# OS cruft
+# macOS / Windows cruft
 .DS_Store
 Thumbs.db
 desktop.ini
-
 
 # Temp & backups
 *.tmp
@@ -11,14 +10,12 @@ desktop.ini
 *.orig
 *.old
 
-
 # Archives & binaries you don’t want in git
 *.zip
 *.7z
 *.rar
 *.tar
 *.tar.gz
-
 
 # Image source/editing files (keep only exported JPG/WEBP/PNG)
 *.psd
@@ -28,12 +25,10 @@ desktop.ini
 *.sketch
 Logo-Full*.png
 
-
 # If you add build tools later
 node_modules/
 dist/
 build/
-
 
 # Logs
 npm-debug.log*
