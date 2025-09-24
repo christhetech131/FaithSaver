@@ -19,6 +19,11 @@ sub init()
 
     print "SettingsScene.init"
 
+    if m.bg <> invalid then
+        m.bg.uri = "pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+        m.bg.loadDisplayMode = "scaleToFill"
+    end if
+
     BuildOptions()
 
     ' Load saved category; default to animals

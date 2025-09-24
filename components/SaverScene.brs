@@ -6,9 +6,8 @@ sub init()
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
 
-  m.previewDuration = 5.0       ' seconds
-  m.saverDuration   = 300.0     ' 5 minutes per project requirements
-  m.saverDuration   = 300.0     ' 5 minutes per latest requirements
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 180.0      ' 3 minutes per updated requirement
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
@@ -50,20 +49,6 @@ sub onModeChanged()
   m.tick.control = "stop"
   StopFeedTask()
 
-
-  m.mode = nextMode
-  m.tick.control = "stop"
-  StopFeedTask()
-
-
-  if nextMode = m.mode then return
-
-  print "SaverScene onModeChanged -> " ; nextMode
-
-  m.mode = nextMode
-  m.tick.control = "stop"
-  StopFeedTask()
-
   if m.mode = "preview" then
     ConfigurePreview()
   else
@@ -78,10 +63,8 @@ sub ConfigurePreview()
   m.offlineUris = OfflineAllUris()
   m.uris = CloneArray(m.offlineUris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  m.idx = 0
   SetImage(0)
-  m.tick.control = "start"
-end sub
-
   m.tick.control = "start"
 end sub
 
@@ -92,21 +75,7 @@ sub ConfigureScreensaver()
   m.offlineUris = OfflineForSaved()
   m.uris = CloneArray(m.offlineUris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
-  SetImage(0)
-  StartFeedTask()
-  m.tick.control = "start"
-end sub
-
-  m.tick.control = "start"
-end sub
-
-sub ConfigureScreensaver()
-  m.hint.text = ""
-  m.hint.visible = false
-  m.tick.duration = m.saverDuration
-  m.offlineUris = OfflineForSaved()
-  m.uris = CloneArray(m.offlineUris)
-  if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  m.idx = 0
   SetImage(0)
   StartFeedTask()
   m.tick.control = "start"
@@ -193,17 +162,10 @@ end function
 
 ' Launch the background task that fetches the GitHub index.json
 sub StartFeedTask()
+  StopFeedTask()
+
   reg = CreateObject("roRegistrySection", "FaithSaver")
   sel = reg.Read("category")
-  if sel = invalid then sel = ""
-  sel = LCase(sel)
-
-  StopFeedTask()
-
-  actual = NormalizeSavedCategory(sel)
-
-  StopFeedTask()
-
   actual = NormalizeSavedCategory(sel)
 
   m.feed = CreateObject("roSGNode", "ImageFeedTask")
@@ -211,11 +173,6 @@ sub StartFeedTask()
   m.feed.observeField("result", "onFeed")
   m.top.appendChild(m.feed)
   print "SaverScene StartFeedTask -> saved=" ; sel ; " actual=" ; actual
-  m.feed = CreateObject("roSGNode","ImageFeedTask")
-  m.feed.category = sel
-  m.feed.observeField("result","onFeed")
-  m.top.appendChild(m.feed)
-  print "SaverScene StartFeedTask -> category="; sel
   m.feed.control = "run"
 end sub
 
@@ -236,7 +193,6 @@ sub onFeed()
       print "SaverScene onFeed -> swapping to remote URIs count=" ; m.uris.count()
       StopFeedTask()
       return
-      print "SaverScene onFeed -> swapping to remote URIs count="; m.uris.count()
     end if
   end if
 
@@ -261,6 +217,11 @@ end function
 
 ' Display image at index i (wraps around)
 sub SetImage(i as Integer)
+  if m.img = invalid then
+    print "SaverScene SetImage -> Poster node missing"
+    return
+  end if
+
   if m.uris = invalid then return
   total = m.uris.count()
   if total = 0 then return
@@ -276,91 +237,8 @@ sub SetImage(i as Integer)
   attempts = 0
   idx = i
   while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
-      m.idx = idx
-      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
-      m.img.visible = true
-      m.img.uri = uri
-      return
-    end if
-    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
-    idx = (idx + 1) mod total
-    attempts = attempts + 1
-  end while
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  attempts = 0
-  idx = i
-  while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
-      m.idx = idx
-      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
-      m.img.visible = true
-      m.img.uri = uri
-      return
-    end if
-    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
-    idx = (idx + 1) mod total
-    attempts = attempts + 1
-  end while
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  attempts = 0
-  idx = i
-  while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
-      m.idx = idx
-      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
-      m.img.visible = true
-      m.img.uri = uri
-      return
-    end if
-    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
-    idx = (idx + 1) mod total
-    attempts = attempts + 1
-  end while
-
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  while i < 0
-    i = i + total
-  end while
-
-  if total > 0 then
-    i = i mod total
-  end if
-
-  m.idx = i
-
-  attempts = 0
-  idx = i
-  while attempts < total
-    uri = m.uris[idx]
-    if uri <> invalid and uri <> "" then
+    uri = NormalizeUriString(m.uris[idx])
+    if uri <> "" then
       m.idx = idx
       print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
       m.img.visible = true
@@ -373,6 +251,9 @@ sub SetImage(i as Integer)
   end while
 
   print "SaverScene SetImage -> no valid URIs available"
+  m.img.visible = true
+  m.img.uri = m.defaultUri
+  m.idx = 0
 end sub
 
 ' Skip to next image if a uri fails to load
@@ -410,14 +291,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
   else if m.mode = "screensaver" then
-    if lower = "back" then
-      m.top.close = true
-      return true
-    else if lower = "up" or lower = "down" or lower = "ok" then
-      ' Consume navigation keys in saver mode so the system does not treat the session like preview
-      return true
-    end if
-    return false
+    ' Any key press should dismiss the saver and return control to Roku
+    m.top.close = true
+    return true
   end if
 
   return false
@@ -468,7 +344,9 @@ function MergeWithOffline(remote as Object, offline as Object) as Object
 end function
 
 function NormalizeUriString(val as Dynamic) as String
-  if type(val) <> "roString" then return ""
-  trimmed = LTrim(RTrim(val))
-  return trimmed
+  if type(val) = "roString" then
+    trimmed = LTrim(RTrim(val))
+    return trimmed
+  end if
+  return ""
 end function
