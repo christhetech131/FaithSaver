@@ -5,9 +5,10 @@ sub init()
   m.img  = m.top.findNode("img")
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
-
   m.previewDuration = 5.0        ' seconds
   m.saverDuration   = 180.0      ' 3 minutes per updated requirement
+  m.previewDuration = 5.0       ' seconds
+  m.saverDuration   = 300.0     ' 5 minutes per project requirements
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
