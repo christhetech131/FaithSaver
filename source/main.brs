@@ -1,80 +1,64 @@
 sub Main(args as dynamic)
-  print "Main() -> launching preview"
-  RunScreenSaverPreview()
-  passedArgs = args
-  print "Main() argsType=" ; type(passedArgs)
-  if type(passedArgs) = "roAssociativeArray" or type(passedArgs) = "roArray" then
-    print "Main() argsCount=" ; passedArgs.Count()
-  end if
+  mode = "preview"
 
-  print "Main() argsType=" ; type(args)
-  if false then print args ' Ensure Roku treats args as referenced even if logging removed
-  print "Main()"
-
-  mode = "screensaver"
   if type(args) = "roAssociativeArray" then
-    if args.DoesExist("launchMode") then mode = LCase(args.launchMode)
+    if args.doesExist("launchMode") then
+      candidate = LCase(args.launchMode)
+      if candidate <> "" then mode = candidate
+    end if
   end if
 
-  if mode = "preview" then
-    RunScreenSaverPreview()
-  else if mode = "settings" then
+  print "Main() -> launchMode=" ; mode
+
+  if mode = "settings" then
     RunScreenSaverSettings()
-  else
+  else if mode = "screensaver" or mode = "saver" then
     RunScreenSaver()
+  else if mode = "preview" then
+    RunScreenSaverPreview()
+  else
+    RunScreenSaverPreview()
   end if
 end sub
 
 sub RunScreenSaverSettings()
   print "RunScreenSaverSettings()"
-  screen = CreateObject("roSGScreen") : port = CreateObject("roMessagePort")
+  screen = CreateObject("roSGScreen")
+  port = CreateObject("roMessagePort")
   screen.SetMessagePort(port)
+
   scene = screen.CreateScene("SettingsScene")
   scene.observeField("close", port)
   scene.close = false
+
   screen.Show()
-  while true
-    msg = wait(100, port)
-    if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return
-    if type(msg) = "roSGNodeEvent" then
-      if msg.getNode() = scene and msg.getField() = "close" and msg.getData() = true then
-        screen.Close()
-        return
-      end if
-    end if
-  end while
+  WaitForClose(screen, scene, port)
 end sub
 
 sub RunScreenSaverPreview()
-  print "RunScreenSaverPreview()"
-  screen = CreateObject("roSGScreen") : port = CreateObject("roMessagePort")
-  screen.SetMessagePort(port)
-  scene = screen.CreateScene("SaverScene")
-  scene.mode = "preview"
-  scene.observeField("close", port)
-  scene.close = false
-  screen.Show()
-  while true
-    msg = wait(100, port)
-    if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return
-    if type(msg) = "roSGNodeEvent" then
-      if msg.getNode() = scene and msg.getField() = "close" and msg.getData() = true then
-        screen.Close()
-        return
-      end if
-    end if
-  end while
+  RunSaverScene("preview")
 end sub
 
 sub RunScreenSaver()
-  print "RunScreenSaver()"
-  screen = CreateObject("roSGScreen") : port = CreateObject("roMessagePort")
+  RunSaverScene("screensaver")
+end sub
+
+sub RunSaverScene(mode as String)
+  print "RunSaverScene(" ; mode ; ")"
+  screen = CreateObject("roSGScreen")
+  port = CreateObject("roMessagePort")
   screen.SetMessagePort(port)
+
   scene = screen.CreateScene("SaverScene")
-  scene.mode = "screensaver"
+  scene.mode = mode
   scene.observeField("close", port)
   scene.close = false
+
   screen.Show()
+  WaitForClose(screen, scene, port)
+end sub
+
+sub WaitForClose(screen as Object, scene as Object, port as Object)
   while true
     msg = wait(100, port)
     if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return

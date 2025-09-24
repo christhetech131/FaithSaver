@@ -8,33 +8,27 @@ sub init()
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
 
-  m.previewDuration = 5.0        ' seconds
-  m.saverDuration   = 300.0      ' 5 minutes per requirements
-  m.saverDuration   = 180.0      ' 3 minutes per updated production cadence
-  m.saverDuration   = 300.0      ' 5 minutes per product requirements
-  m.previewDuration = 5.0        ' seconds
-  m.saverDuration   = 300.0      ' 5 minutes per product requirements
-  m.previewDuration = 5.0        ' seconds
-  m.saverDuration   = 180.0      ' 3 minutes per updated requirement
-  m.previewDuration = 5.0       ' seconds
-  m.saverDuration   = 300.0     ' 5 minutes per project requirements
+  m.previewDuration = 5.0      ' seconds
+  m.saverDuration   = 300.0    ' 5 minutes per requirements
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
   m.mode = ""
 
-  ' Observe image load events to gracefully skip missing files
-  m.img.observeField("loadStatus", "onImgStatus")
+  if m.img <> invalid then m.img.observeField("loadStatus", "onImgStatus")
 
   m.uris = CreateObject("roArray", 0, true)
   m.idx  = 0
   m.feed = invalid
   m.offlineUris = CreateObject("roArray", 0, true)
 
-  m.tick.observeField("fire", "onTick")
-  if m.tick <> invalid then m.tick.control = "stop"
-  m.tick.repeat = true
-  m.hint.visible = false
+  if m.tick <> invalid then
+    m.tick.observeField("fire", "onTick")
+    m.tick.control = "stop"
+    m.tick.repeat = true
+  end if
+
+  if m.hint <> invalid then m.hint.visible = false
 
   m.top.observeField("mode", "onModeChanged")
   m.top.observeField("close", "onCloseChanged")
@@ -49,8 +43,6 @@ sub onModeChanged()
   modeValue = m.top.mode
   if modeValue = invalid then modeValue = ""
   nextMode = LCase(modeValue)
-  if nextMode = "" then return
-  if nextMode <> "preview" and nextMode <> "screensaver" then return
   if nextMode <> "preview" and nextMode <> "screensaver" then
     nextMode = "preview"
   end if
@@ -60,7 +52,7 @@ sub onModeChanged()
   print "SaverScene onModeChanged -> " ; nextMode
 
   m.mode = nextMode
-  m.tick.control = "stop"
+  if m.tick <> invalid then m.tick.control = "stop"
   StopFeedTask()
 
   if m.mode = "preview" then
@@ -75,15 +67,18 @@ sub ConfigurePreview()
     m.hint.visible = true
     m.hint.text = m.previewHint
   end if
+
   if m.tick <> invalid then m.tick.duration = m.previewDuration
+
   m.offlineUris = OfflineAllUris()
   m.uris = CloneArray(m.offlineUris)
   ShuffleArray(m.uris)
+
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
   m.idx = 0
   SetImage(0)
+
   if m.tick <> invalid then m.tick.control = "start"
-  m.tick.control = "start"
 end sub
 
 sub ConfigureScreensaver()
@@ -91,14 +86,19 @@ sub ConfigureScreensaver()
     m.hint.text = ""
     m.hint.visible = false
   end if
+
   if m.tick <> invalid then m.tick.duration = m.saverDuration
+
   m.offlineUris = OfflineForSaved()
   m.uris = CloneArray(m.offlineUris)
   ShuffleArrayRange(m.uris, 1)
+
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
   m.idx = 0
   SetImage(0)
+
   StartFeedTask()
+
   if m.tick <> invalid then m.tick.control = "start"
 end sub
 
@@ -132,7 +132,7 @@ function OfflineAllUris() as Object
   arr.push(base + "summer.jpg")
   arr.push(base + "textures.jpg")
   arr.push(base + "winter.jpg")
-  arr.push(m.defaultUri)
+  arr.push(base + "default.jpg")
   return arr
 end function
 
@@ -145,13 +145,15 @@ function OfflineForSaved() as Object
   base = "pkg:/images/offline/"
   arr = CreateObject("roArray", 4, true)
   arr.push(base + cat + ".jpg")
-  fallback = m.defaultUri
+
+  fallback = base + "default.jpg"
   if arr[0] <> fallback then arr.push(fallback)
+
   return arr
 end function
 
 function NormalizeSavedCategory(sel as Dynamic) as String
-  if type(sel) = "roString" then
+  if type(sel) = "roString" or type(sel) = "String" then
     key = LCase(sel)
   else
     key = ""
@@ -193,6 +195,7 @@ sub StartFeedTask()
   m.feed.category = actual
   m.feed.observeField("result", "onFeed")
   m.top.appendChild(m.feed)
+
   print "SaverScene StartFeedTask -> saved=" ; sel ; " actual=" ; actual
   m.feed.control = "run"
 end sub
@@ -208,9 +211,11 @@ sub onFeed()
     if type(uris) = "roArray" and uris.count() > 0 then
       combined = BuildSaverPlaylist(uris, m.offlineUris)
       if combined.count() = 0 then combined = CloneArray(m.offlineUris)
+
       m.uris = combined
       m.idx = 0
       SetImage(0)
+
       print "SaverScene onFeed -> swapping to remote URIs count=" ; m.uris.count()
       StopFeedTask()
       return
@@ -252,9 +257,7 @@ sub SetImage(i as Integer)
     i = i + total
   end while
 
-  if total > 0 then
-    i = i mod total
-  end if
+  if total > 0 then i = i mod total
 
   attempts = 0
   idx = i
@@ -267,6 +270,7 @@ sub SetImage(i as Integer)
       m.img.uri = uri
       return
     end if
+
     print "SaverScene SetImage -> skipping empty uri at index=" ; idx
     idx = (idx + 1) mod total
     attempts = attempts + 1
@@ -280,6 +284,8 @@ end sub
 
 ' Skip to next image if a uri fails to load
 sub onImgStatus()
+  if m.img = invalid then return
+
   print "Poster loadStatus=" ; m.img.loadStatus ; " idx=" ; m.idx ; " uri=" ; m.img.uri
   if m.img.loadStatus = "failed" then
     SetImage(m.idx + 1)
@@ -308,12 +314,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
       m.top.close = true
       return true
     else if lower = "ok" then
-      ' no-op in preview, but consume to avoid system beep
       return true
     end if
+
     return false
   else if m.mode = "screensaver" then
-    ' Any key press should dismiss the saver and return control to Roku
     m.top.close = true
     return true
   end if
@@ -325,12 +330,14 @@ end function
 
 function CloneArray(arr as Object) as Object
   if type(arr) <> "roArray" then return CreateObject("roArray", 0, true)
+
   copy = CreateObject("roArray", arr.count(), true)
   i = 0
   while i < arr.count()
     copy.push(arr[i])
     i = i + 1
   end while
+
   return copy
 end function
 
@@ -338,7 +345,6 @@ function BuildSaverPlaylist(remote as Object, offline as Object) as Object
   result = CreateObject("roArray", 0, true)
   seen = CreateObject("roAssociativeArray")
 
-  ' Always start with the offline category image when available
   fallback = CreateObject("roArray", 0, true)
   if type(offline) = "roArray" then
     if offline.count() > 0 then
@@ -357,7 +363,6 @@ function BuildSaverPlaylist(remote as Object, offline as Object) as Object
     end while
   end if
 
-  ' Collect unique remote URIs and shuffle them
   remoteList = CreateObject("roArray", 0, true)
   remoteSeen = CreateObject("roAssociativeArray")
   if type(remote) = "roArray" then
@@ -384,7 +389,6 @@ function BuildSaverPlaylist(remote as Object, offline as Object) as Object
     i = i + 1
   end while
 
-  ' Append any remaining offline fallbacks so rotation never runs dry
   i = 0
   while i < fallback.count()
     uri = fallback[i]
@@ -442,14 +446,8 @@ end function
 function TrimWhitespace(input as Dynamic) as String
   if input = invalid then return ""
 
-  if type(input) <> "roString" and type(input) <> "String" then return ""
-
-  if type(val) <> "roString" then return ""
-  return TrimWhitespace(val)
-end function
-
-function TrimWhitespace(input as String) as String
-  if input = invalid then return ""
+  t = type(input)
+  if t <> "roString" and t <> "String" then return ""
 
   text = input
   total = Len(text)
@@ -472,9 +470,4 @@ function TrimWhitespace(input as String) as String
   if endIndex < startIndex then return ""
 
   return Mid(text, startIndex + 1, endIndex - startIndex + 1)
-  if type(val) = "roString" then
-    trimmed = LTrim(RTrim(val))
-    return trimmed
-  end if
-  return ""
 end function
