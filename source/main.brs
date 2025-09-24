@@ -1,6 +1,7 @@
 sub Main(args as dynamic)
   print "Main() argsType=" ; type(args)
   if false then print args ' Ensure Roku treats args as referenced even if logging removed
+  print "Main()"
   ' Dev Installer: make "Go to app" useful
   RunScreenSaverPreview()
 end sub

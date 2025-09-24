@@ -174,6 +174,11 @@ sub StartFeedTask()
   m.feed.observeField("result", "onFeed")
   m.top.appendChild(m.feed)
   print "SaverScene StartFeedTask -> saved=" ; sel ; " actual=" ; actual
+  m.feed = CreateObject("roSGNode","ImageFeedTask")
+  m.feed.category = sel
+  m.feed.observeField("result","onFeed")
+  m.top.appendChild(m.feed)
+  print "SaverScene StartFeedTask -> category="; sel
   m.feed.control = "run"
 end sub
 
@@ -194,6 +199,7 @@ sub onFeed()
       print "SaverScene onFeed -> swapping to remote URIs count=" ; m.uris.count()
       StopFeedTask()
       return
+      print "SaverScene onFeed -> swapping to remote URIs count="; m.uris.count()
     end if
   end if
 
@@ -223,6 +229,16 @@ sub SetImage(i as Integer)
   if total > 0 then
     i = i mod total
   end if
+
+  while i < 0
+    i = i + total
+  end while
+
+  if total > 0 then
+    i = i mod total
+  end if
+
+  m.idx = i
 
   attempts = 0
   idx = i
