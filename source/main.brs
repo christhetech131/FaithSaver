@@ -1,14 +1,5 @@
 sub Main(args as dynamic)
-  passedArgs = args
-  print "Main() argsType=" ; type(passedArgs)
-  if type(passedArgs) = "roAssociativeArray" or type(passedArgs) = "roArray" then
-    print "Main() argsCount=" ; passedArgs.Count()
-  end if
-
-  print "Main() argsType=" ; type(args)
-  if false then print args ' Ensure Roku treats args as referenced even if logging removed
-  print "Main()"
-  ' Dev Installer: make "Go to app" useful
+  print "Main() -> launching preview"
   RunScreenSaverPreview()
 end sub
 
@@ -17,11 +8,18 @@ sub RunScreenSaverSettings()
   screen = CreateObject("roSGScreen") : port = CreateObject("roMessagePort")
   screen.SetMessagePort(port)
   scene = screen.CreateScene("SettingsScene")
+  scene.observeField("close", port)
+  scene.close = false
   screen.Show()
   while true
     msg = wait(100, port)
     if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return
-    if scene.close = true then screen.Close() : return
+    if type(msg) = "roSGNodeEvent" then
+      if msg.getNode() = scene and msg.getField() = "close" and msg.getData() = true then
+        screen.Close()
+        return
+      end if
+    end if
   end while
 end sub
 
@@ -31,11 +29,18 @@ sub RunScreenSaverPreview()
   screen.SetMessagePort(port)
   scene = screen.CreateScene("SaverScene")
   scene.mode = "preview"
+  scene.observeField("close", port)
+  scene.close = false
   screen.Show()
   while true
     msg = wait(100, port)
     if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return
-    if scene.close = true then screen.Close() : return
+    if type(msg) = "roSGNodeEvent" then
+      if msg.getNode() = scene and msg.getField() = "close" and msg.getData() = true then
+        screen.Close()
+        return
+      end if
+    end if
   end while
 end sub
 
@@ -45,10 +50,17 @@ sub RunScreenSaver()
   screen.SetMessagePort(port)
   scene = screen.CreateScene("SaverScene")
   scene.mode = "screensaver"
+  scene.observeField("close", port)
+  scene.close = false
   screen.Show()
   while true
     msg = wait(100, port)
     if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then return
-    if scene.close = true then screen.Close() : return
+    if type(msg) = "roSGNodeEvent" then
+      if msg.getNode() = scene and msg.getField() = "close" and msg.getData() = true then
+        screen.Close()
+        return
+      end if
+    end if
   end while
 end sub

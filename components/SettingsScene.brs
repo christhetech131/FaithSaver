@@ -1,16 +1,26 @@
 ' SettingsScene — plain labels + custom highlight (RGBA colors). No roFileSystem.
 
 sub init()
-    m.bg    = m.top.findNode("bg")
-    m.menu  = m.top.findNode("menu")
-    m.title = m.top.findNode("title")
-    m.about = m.top.findNode("about")
+    m.bg         = m.top.findNode("bg")
+    m.menu       = m.top.findNode("menu")
+    m.title      = m.top.findNode("title")
+    m.about      = m.top.findNode("about")
+    m.aboutText  = m.top.findNode("aboutText")
+    m.aboutTitle = m.top.findNode("aboutTitle")
     m.aboutVisible = false
+    m.aboutLoaded  = false
 
     ' RGBA colors (0xRRGGBBAA)
     m.colorNavy  = &h103A57FF   ' navy #103A57, fully opaque
     m.colorWhite = &hFFFFFFFF   ' white
     m.colorBlack = &h000000FF   ' black
+
+    if m.aboutText <> invalid then
+        m.aboutText.textVertAlign = "top"
+        m.aboutText.textHorizAlign = "left"
+        m.aboutText.textAttrs = { color: m.colorBlack, fontSize: 26 }
+        m.aboutText.maxLines = 0
+    end if
 
     ' Layout
     m.rowH  = 72
@@ -18,6 +28,13 @@ sub init()
     m.textX = 16
 
     print "SettingsScene.init"
+
+    m.top.close = false
+
+    if m.bg <> invalid then
+        m.bg.uri = "pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+        m.bg.loadDisplayMode = "scaleToFill"
+    end if
 
     BuildOptions()
 
@@ -83,18 +100,25 @@ function CurrentSeasonName() as String
     dt = CreateObject("roDateTime")
     mth = dt.GetMonth()
 
-    if mth = 3 or mth = 4 or mth = 5 then
-        return "spring"
-    else if mth = 6 or mth = 7 or mth = 8 then
-        return "summer"
-    else if mth = 9 or mth = 10 or mth = 11 then
-        return "fall"
-    else
-        return "winter"
-    end if
+    select case mth
+        case 3, 4, 5
+            return "spring"
+        case 6, 7, 8
+            return "summer"
+        case 9, 10, 11
+            return "fall"
+    end select
+
+    return "winter"
 end function
 
 sub BuildRows()
+    if m.menu = invalid then
+        m.labels = CreateObject("roArray", 0, true)
+        m.hl = invalid
+        return
+    end if
+
     ' Clear menu children
     kids = m.menu.getChildren(-1, 0)
     if kids <> invalid then
@@ -130,11 +154,15 @@ sub BuildRows()
 end sub
 
 sub Paint()
-    ' Position highlight and force colors (every repaint)
-    newY = m.focus * m.rowH
-    m.hl.translation = [0, newY]
-    m.hl.color = m.colorNavy
-    m.hl.opacity = 1.0
+    if m.hl <> invalid then
+        ' Position highlight and force colors (every repaint)
+        newY = m.focus * m.rowH
+        m.hl.translation = [0, newY]
+        m.hl.color = m.colorNavy
+        m.hl.opacity = 1.0
+    end if
+
+    if m.labels = invalid then return
 
     i = 0
     while i < m.labels.count()
@@ -147,11 +175,24 @@ sub Paint()
         i = i + 1
     end while
 
-    m.title.color = m.colorBlack
-    m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
+    if m.title <> invalid then
+        m.title.color = m.colorBlack
+        m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
+    end if
 end sub
 
 sub ShowAbout()
+    if not m.aboutLoaded then
+        aboutText = LoadAboutText()
+        if m.aboutTitle <> invalid then
+            m.aboutTitle.text = "About FaithSaver"
+        end if
+        if m.aboutText <> invalid then
+            m.aboutText.text = aboutText
+        end if
+        m.aboutLoaded = true
+    end if
+
     if m.about <> invalid then
         m.about.visible = true
     end if
@@ -212,4 +253,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
 
     return false
+end function
+
+function LoadAboutText() as String
+    path = "pkg:/README.md"
+    content = ReadAsciiFile(path)
+    if type(content) = "roString" and content <> "" then
+        clean = Replace(content, Chr(13) + Chr(10), Chr(10))
+        clean = Replace(clean, Chr(13), Chr(10))
+        return clean
+    end if
+
+    return "FaithSaver Screensaver\n\nREADME could not be loaded from " + path + "."
 end function
