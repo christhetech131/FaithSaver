@@ -9,6 +9,7 @@ sub init()
   m.hint = m.top.findNode("hint")
 
   m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 300.0      ' 5 minutes per requirements
   m.saverDuration   = 180.0      ' 3 minutes per updated production cadence
   m.saverDuration   = 300.0      ' 5 minutes per product requirements
   m.previewDuration = 5.0        ' seconds
@@ -224,15 +225,16 @@ function CurrentSeasonName() as String
   dt = CreateObject("roDateTime")
   mth = dt.GetMonth()
 
-  if mth = 3 or mth = 4 or mth = 5 then
-    return "spring"
-  else if mth = 6 or mth = 7 or mth = 8 then
-    return "summer"
-  else if mth = 9 or mth = 10 or mth = 11 then
-    return "fall"
-  else
-    return "winter"
-  end if
+  select case mth
+    case 3, 4, 5
+      return "spring"
+    case 6, 7, 8
+      return "summer"
+    case 9, 10, 11
+      return "fall"
+  end select
+
+  return "winter"
 end function
 
 ' Display image at index i (wraps around)

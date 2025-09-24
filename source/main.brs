@@ -1,4 +1,6 @@
 sub Main(args as dynamic)
+  print "Main() -> launching preview"
+  RunScreenSaverPreview()
   passedArgs = args
   print "Main() argsType=" ; type(passedArgs)
   if type(passedArgs) = "roAssociativeArray" or type(passedArgs) = "roArray" then

@@ -100,6 +100,45 @@ function CurrentSeasonName() as String
   dt = CreateObject("roDateTime")
   mth = dt.GetMonth()
 
+  select case mth
+    case 3, 4, 5
+      return "spring"
+    case 6, 7, 8
+      return "summer"
+    case 9, 10, 11
+      return "fall"
+  end select
+
+  return "winter"
+end function
+
+function TrimWhitespace(input as Dynamic) as String
+  if input = invalid then return ""
+
+  t = type(input)
+  if t <> "roString" and t <> "String" then return ""
+
+  text = input
+  total = Len(text)
+  if total <= 0 then return ""
+
+  startIndex = 0
+  while startIndex < total
+    ch = Asc(Mid(text, startIndex + 1, 1))
+    if ch > 32 then exit while
+    startIndex = startIndex + 1
+  end while
+
+  endIndex = total - 1
+  while endIndex >= startIndex
+    ch = Asc(Mid(text, endIndex + 1, 1))
+    if ch > 32 then exit while
+    endIndex = endIndex - 1
+  end while
+
+  if endIndex < startIndex then return ""
+
+  return Mid(text, startIndex + 1, endIndex - startIndex + 1)
   if mth = 3 or mth = 4 or mth = 5 then
     return "spring"
   else if mth = 6 or mth = 7 or mth = 8 then
