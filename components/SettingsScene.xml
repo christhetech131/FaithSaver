@@ -34,7 +34,27 @@
       id="hint"
       translation="[120,980]"
       color="0x000000FF"
-      text="Up/Down: Move   OK: Save   Back: Exit" />
+      text="Up/Down: Move   OK: Save   Back: Exit   *: About" />
+
+    <!-- Lightweight About overlay (hidden until the Options key is pressed) -->
+    <Group id="about" visible="false">
+      <Rectangle width="1920" height="1080" color="0x00000080" />
+      <Rectangle
+        width="1120"
+        height="640"
+        translation="[400,220]"
+        color="0xFFFFFFFF"
+        opacity="0.94" />
+      <Label
+        translation="[440,280]"
+        width="1040"
+        height="560"
+        wrap="true"
+        horizAlign="center"
+        vertAlign="top"
+        color="0x000000FF"
+        text="FaithSaver Screensaver\n\nVersion info and credits will appear here in a future update. Press Back or OK to return." />
+    </Group>
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />

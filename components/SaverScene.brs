@@ -6,40 +6,100 @@ sub init()
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
 
-  ' Observe image load events to gracefully skip missing files
-  m.img.observeField("loadStatus","onImgStatus")
+  m.previewDuration = 5.0       ' seconds
+  m.saverDuration   = 180.0     ' 3 minutes per latest requirements
+  m.defaultUri      = "pkg:/images/offline/default.jpg"
+  m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
-  m.uris = CreateObject("roArray", 20, true)
+  m.mode = ""
+
+  ' Observe image load events to gracefully skip missing files
+  m.img.observeField("loadStatus", "onImgStatus")
+
+  m.uris = CreateObject("roArray", 0, true)
   m.idx  = 0
   m.feed = invalid
+  m.offlineUris = CreateObject("roArray", 0, true)
 
-  if LCase(m.top.mode) = "preview" then
-    ' Show ALL offline images so preview never appears black
-    m.hint.text = "Preview — Up/Down to cycle  •  Back to exit"
-    m.tick.duration = 5.0
-    m.uris = OfflineAllUris()
-    if m.uris.count() = 0 then m.uris.push("pkg:/images/offline/default.jpg")
-    SetImage(0)
-  else
-    ' Real saver: start with the saved category offline image(s),
-    ' then swap to remote feed when the task returns.
-    m.hint.text = ""
-    m.tick.duration = 300.0   ' 5 minutes
-    m.uris = OfflineForSaved()
-    if m.uris.count() = 0 then m.uris.push("pkg:/images/offline/default.jpg")
-    SetImage(0)
-    StartFeedTask()
+  m.tick.observeField("fire", "onTick")
+  m.tick.control = "stop"
+  m.tick.repeat = true
+  m.hint.visible = false
+
+  m.top.observeField("mode", "onModeChanged")
+  m.top.observeField("close", "onCloseChanged")
+  onModeChanged()
+
+  m.top.setFocus(true)
+end sub
+
+sub onModeChanged()
+  modeValue = m.top.mode
+  if modeValue = invalid then modeValue = ""
+  nextMode = LCase(modeValue)
+  if nextMode <> "preview" and nextMode <> "screensaver" then
+    nextMode = "preview"
   end if
 
-  m.tick.observeField("fire","onTick")
+  if nextMode = m.mode then return
+
+  print "SaverScene onModeChanged -> " ; nextMode
+
+  m.mode = nextMode
+  m.tick.control = "stop"
+  StopFeedTask()
+
+  if m.mode = "preview" then
+    ConfigurePreview()
+  else
+    ConfigureScreensaver()
+  end if
+end sub
+
+sub ConfigurePreview()
+  m.hint.visible = true
+  m.hint.text = m.previewHint
+  m.tick.duration = m.previewDuration
+  m.offlineUris = OfflineAllUris()
+  m.uris = CloneArray(m.offlineUris)
+  if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  SetImage(0)
   m.tick.control = "start"
-  m.top.setFocus(true)
+end sub
+
+sub ConfigureScreensaver()
+  m.hint.text = ""
+  m.hint.visible = false
+  m.tick.duration = m.saverDuration
+  m.offlineUris = OfflineForSaved()
+  m.uris = CloneArray(m.offlineUris)
+  if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  SetImage(0)
+  StartFeedTask()
+  m.tick.control = "start"
+end sub
+
+sub onCloseChanged()
+  if m.top.close = true then
+    m.tick.control = "stop"
+    StopFeedTask()
+  end if
+end sub
+
+sub StopFeedTask()
+  if m.feed <> invalid then
+    m.feed.unobserveField("result")
+    m.feed.control = "stop"
+    parent = m.feed.getParent()
+    if parent <> invalid then parent.removeChild(m.feed)
+    m.feed = invalid
+  end if
 end sub
 
 ' Build an array of ALL offline images so preview always has content
 function OfflineAllUris() as Object
   base = "pkg:/images/offline/"
-  arr = CreateObject("roArray", 16, true)
+  arr = CreateObject("roArray", 12, true)
   arr.push(base + "animals.jpg")
   arr.push(base + "fall.jpg")
   arr.push(base + "geology.jpg")
@@ -49,32 +109,71 @@ function OfflineAllUris() as Object
   arr.push(base + "summer.jpg")
   arr.push(base + "textures.jpg")
   arr.push(base + "winter.jpg")
-  arr.push(base + "default.jpg")
+  arr.push(m.defaultUri)
   return arr
 end function
 
-' Offline URIs for the saved category (plus default)
+' Offline URIs for the saved category (plus default fallback)
 function OfflineForSaved() as Object
-  reg = CreateObject("roRegistrySection","FaithSaver")
+  reg = CreateObject("roRegistrySection", "FaithSaver")
   sel = reg.Read("category")
-  if sel = invalid then sel = ""
-  sel = LCase(sel)
-  if sel = "seasonal" or sel = "" then sel = CurrentSeasonName()
-  if sel = "" then sel = "animals"
+  cat = NormalizeSavedCategory(sel)
 
   base = "pkg:/images/offline/"
   arr = CreateObject("roArray", 4, true)
-  arr.push(base + sel + ".jpg")
-  arr.push(base + "default.jpg")
+  arr.push(base + cat + ".jpg")
+  fallback = m.defaultUri
+  if arr[0] <> fallback then arr.push(fallback)
   return arr
+end function
+
+function NormalizeSavedCategory(sel as Dynamic) as String
+  if type(sel) = "roString" then
+    key = LCase(sel)
+  else
+    key = ""
+  end if
+
+  if key = "seasonal" or key = "" then
+    actual = CurrentSeasonName()
+    if IsKnownCategory(actual) then return actual
+    return "animals"
+  end if
+
+  if IsKnownCategory(key) then return key
+
+  return "animals"
+end function
+
+function IsKnownCategory(cat as String) as Boolean
+  if cat = "animals" then return true
+  if cat = "fall" then return true
+  if cat = "geology" then return true
+  if cat = "scenery" then return true
+  if cat = "space" then return true
+  if cat = "spring" then return true
+  if cat = "summer" then return true
+  if cat = "textures" then return true
+  if cat = "winter" then return true
+  return false
 end function
 
 ' Launch the background task that fetches the GitHub index.json
 sub StartFeedTask()
-  reg = CreateObject("roRegistrySection","FaithSaver")
+  reg = CreateObject("roRegistrySection", "FaithSaver")
   sel = reg.Read("category")
   if sel = invalid then sel = ""
+  sel = LCase(sel)
 
+  StopFeedTask()
+
+  actual = NormalizeSavedCategory(sel)
+
+  m.feed = CreateObject("roSGNode", "ImageFeedTask")
+  m.feed.category = actual
+  m.feed.observeField("result", "onFeed")
+  m.top.appendChild(m.feed)
+  print "SaverScene StartFeedTask -> saved=" ; sel ; " actual=" ; actual
   m.feed = CreateObject("roSGNode","ImageFeedTask")
   m.feed.category = sel
   m.feed.observeField("result","onFeed")
@@ -85,15 +184,27 @@ end sub
 
 ' Called when ImageFeedTask returns. If we have remote URIs, swap to them.
 sub onFeed()
-  if m.feed <> invalid and m.feed.result <> invalid then
-    r = m.feed.result
-    if r.uris <> invalid and r.uris.count() > 0 then
-      m.uris = r.uris
+  if m.mode <> "screensaver" then return
+  if m.feed = invalid then return
+
+  result = m.feed.result
+  if type(result) = "roAssociativeArray" then
+    uris = result.uris
+    if type(uris) = "roArray" and uris.count() > 0 then
+      combined = MergeWithOffline(uris, m.offlineUris)
+      if combined.count() = 0 then combined = CloneArray(m.offlineUris)
+      m.uris = combined
       m.idx = 0
       SetImage(0)
+      print "SaverScene onFeed -> swapping to remote URIs count=" ; m.uris.count()
+      StopFeedTask()
+      return
       print "SaverScene onFeed -> swapping to remote URIs count="; m.uris.count()
     end if
   end if
+
+  print "SaverScene onFeed -> remote list empty"
+  StopFeedTask()
 end sub
 
 function CurrentSeasonName() as String
@@ -119,17 +230,38 @@ sub SetImage(i as Integer)
     i = i mod total
   end if
 
+  while i < 0
+    i = i + total
+  end while
+
+  if total > 0 then
+    i = i mod total
+  end if
+
   m.idx = i
 
-  uri = m.uris[m.idx]
-  print "SaverScene SetImage -> idx="; m.idx; " uri="; uri
-  m.img.visible = true
-  m.img.uri = uri
+  attempts = 0
+  idx = i
+  while attempts < total
+    uri = m.uris[idx]
+    if uri <> invalid and uri <> "" then
+      m.idx = idx
+      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
+      m.img.visible = true
+      m.img.uri = uri
+      return
+    end if
+    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
+    idx = (idx + 1) mod total
+    attempts = attempts + 1
+  end while
+
+  print "SaverScene SetImage -> no valid URIs available"
 end sub
 
 ' Skip to next image if a uri fails to load
 sub onImgStatus()
-  print "Poster loadStatus="; m.img.loadStatus; " idx="; m.idx; " uri="; m.img.uri
+  print "Poster loadStatus=" ; m.img.loadStatus ; " idx=" ; m.idx ; " uri=" ; m.img.uri
   if m.img.loadStatus = "failed" then
     SetImage(m.idx + 1)
   end if
@@ -144,19 +276,83 @@ end sub
 function onKeyEvent(key as String, press as Boolean) as Boolean
   if not press then return false
 
-  if key = "up" then
-    SetImage(m.idx - 1)
-    return true
-  else if key = "down" then
-    SetImage(m.idx + 1)
-    return true
-  else if key = "back" then
-    m.top.close = true
-    return true
-  else if key = "OK" then
-    ' no-op in preview
-    return true
+  lower = LCase(key)
+
+  if m.mode = "preview" then
+    if lower = "up" then
+      SetImage(m.idx - 1)
+      return true
+    else if lower = "down" then
+      SetImage(m.idx + 1)
+      return true
+    else if lower = "back" then
+      m.top.close = true
+      return true
+    else if lower = "ok" then
+      ' no-op in preview, but consume to avoid system beep
+      return true
+    end if
+    return false
+  else if m.mode = "screensaver" then
+    if lower = "back" then
+      m.top.close = true
+      return true
+    else if lower = "up" or lower = "down" or lower = "ok" then
+      ' Consume navigation keys in saver mode so the system does not treat the session like preview
+      return true
+    end if
+    return false
   end if
 
   return false
+end function
+
+' Utilities --------------------------------------------------------------
+
+function CloneArray(arr as Object) as Object
+  if type(arr) <> "roArray" then return CreateObject("roArray", 0, true)
+  copy = CreateObject("roArray", arr.count(), true)
+  i = 0
+  while i < arr.count()
+    copy.push(arr[i])
+    i = i + 1
+  end while
+  return copy
+end function
+
+function MergeWithOffline(remote as Object, offline as Object) as Object
+  result = CreateObject("roArray", 0, true)
+  seen = CreateObject("roAssociativeArray")
+
+  if type(remote) = "roArray" then
+    i = 0
+    while i < remote.count()
+      uri = NormalizeUriString(remote[i])
+      if uri <> "" and not seen.doesExist(uri) then
+        seen[uri] = true
+        result.push(uri)
+      end if
+      i = i + 1
+    end while
+  end if
+
+  if type(offline) = "roArray" then
+    i = 0
+    while i < offline.count()
+      uri = NormalizeUriString(offline[i])
+      if uri <> "" and not seen.doesExist(uri) then
+        seen[uri] = true
+        result.push(uri)
+      end if
+      i = i + 1
+    end while
+  end if
+
+  return result
+end function
+
+function NormalizeUriString(val as Dynamic) as String
+  if type(val) <> "roString" then return ""
+  trimmed = LTrim(RTrim(val))
+  return trimmed
 end function

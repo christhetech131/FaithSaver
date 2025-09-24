@@ -1,6 +1,7 @@
 <component name="SaverScene" extends="Scene">
   <interface>
-    <field id="mode" type="string" value="preview" />
+    <!-- `mode` is assigned by the entry point before the scene is shown. -->
+    <field id="mode" type="string" value="" />
     <field id="close" type="boolean" alwaysNotify="true" />
   </interface>
 

@@ -3,6 +3,10 @@ major_version=1
 minor_version=2
 build_version=00005
 ui_resolutions=fhd
+main=source/main.brs
+screensaver_entry=RunScreenSaver
+screensaver_settings=RunScreenSaverSettings
+screensaver_preview=RunScreenSaverPreview
 
 ; App poster (channel/saver logo) — 540x405 JPG
 mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-540x405.jpg

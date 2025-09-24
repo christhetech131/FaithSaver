@@ -4,6 +4,8 @@ sub init()
     m.bg    = m.top.findNode("bg")
     m.menu  = m.top.findNode("menu")
     m.title = m.top.findNode("title")
+    m.about = m.top.findNode("about")
+    m.aboutVisible = false
 
     ' RGBA colors (0xRRGGBBAA)
     m.colorNavy  = &h103A57FF   ' navy #103A57, fully opaque
@@ -143,24 +145,53 @@ sub Paint()
     m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
 end sub
 
+sub ShowAbout()
+    if m.about <> invalid then
+        m.about.visible = true
+    end if
+    m.aboutVisible = true
+end sub
+
+sub HideAbout()
+    if m.about <> invalid then
+        m.about.visible = false
+    end if
+    m.aboutVisible = false
+end sub
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
-    if key = "up" then
+    lower = LCase(key)
+
+    if m.aboutVisible then
+        if lower = "back" or lower = "ok" or lower = "options" or lower = "info" then
+            HideAbout()
+            return true
+        end if
+        return true
+    end if
+
+    if lower = "options" or lower = "info" then
+        ShowAbout()
+        return true
+    end if
+
+    if lower = "up" then
         if m.focus > 0 then
             m.focus = m.focus - 1
             Paint()
         end if
         return true
 
-    else if key = "down" then
+    else if lower = "down" then
         if m.focus < m.titles.count() - 1 then
             m.focus = m.focus + 1
             Paint()
         end if
         return true
 
-    else if key = "OK" then
+    else if lower = "ok" then
         m.selected = m.focus
         reg = CreateObject("roRegistrySection","FaithSaver")
         reg.Write("category", LCase(m.keys[m.selected]))
@@ -169,7 +200,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         Paint()
         return true
 
-    else if key = "back" then
+    else if lower = "back" then
         m.top.close = true
         return true
     end if
