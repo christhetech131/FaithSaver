@@ -112,6 +112,12 @@ function CurrentSeasonName() as String
 end function
 
 sub BuildRows()
+    if m.menu = invalid then
+        m.labels = CreateObject("roArray", 0, true)
+        m.hl = invalid
+        return
+    end if
+
     ' Clear menu children
     kids = m.menu.getChildren(-1, 0)
     if kids <> invalid then
@@ -147,11 +153,15 @@ sub BuildRows()
 end sub
 
 sub Paint()
-    ' Position highlight and force colors (every repaint)
-    newY = m.focus * m.rowH
-    m.hl.translation = [0, newY]
-    m.hl.color = m.colorNavy
-    m.hl.opacity = 1.0
+    if m.hl <> invalid then
+        ' Position highlight and force colors (every repaint)
+        newY = m.focus * m.rowH
+        m.hl.translation = [0, newY]
+        m.hl.color = m.colorNavy
+        m.hl.opacity = 1.0
+    end if
+
+    if m.labels = invalid then return
 
     i = 0
     while i < m.labels.count()
@@ -164,8 +174,10 @@ sub Paint()
         i = i + 1
     end while
 
-    m.title.color = m.colorBlack
-    m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
+    if m.title <> invalid then
+        m.title.color = m.colorBlack
+        m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
+    end if
 end sub
 
 sub ShowAbout()

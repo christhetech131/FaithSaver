@@ -6,7 +6,7 @@ end sub
 
 sub go()
   rawCategory = m.top.category
-  if type(rawCategory) = "roString" then
+  if type(rawCategory) = "roString" or type(rawCategory) = "String" then
     cat = LCase(rawCategory)
   else
     cat = ""
@@ -28,6 +28,25 @@ sub go()
   uris = CreateObject("roArray", 20, true)
   seen = CreateObject("roAssociativeArray")
 
+  if type(jsonStr) = "roString" or type(jsonStr) = "String" then
+    if Len(jsonStr) > 0 then
+      data = ParseJson(jsonStr)
+      if type(data) = "roAssociativeArray" then
+        cats = data.categories
+        if type(cats) = "roAssociativeArray" then
+          list = cats[cat]
+          if type(list) = "roArray" then
+            i = 0
+            while i < list.count()
+              item = list[i]
+              uri = NormalizeEntry(item, rawRoot)
+              if uri <> "" and not seen.doesExist(uri) then
+                seen[uri] = true
+                uris.push(uri)
+              end if
+              i = i + 1
+            end while
+          end if
   if code = 200 and jsonStr <> invalid and jsonStr <> "" then
     data = ParseJson(jsonStr)
     if type(data) = "roAssociativeArray" then
@@ -47,8 +66,11 @@ sub go()
           end while
         end if
       end if
+    else
+      print "ImageFeedTask warning -> empty JSON body"
     end if
   else
+    print "ImageFeedTask warning -> empty response"
     print "ImageFeedTask warning -> http"; code; " body ignored"
   end if
 
@@ -57,6 +79,9 @@ sub go()
 end sub
 
 function NormalizeEntry(item as Dynamic, root as String) as String
+  t = type(item)
+  if t <> "roString" and t <> "String" then return ""
+  entry = TrimWhitespace(item)
   if type(item) <> "roString" then return ""
   entry = TrimWhitespace(item)
   entry = LTrim(RTrim(item))
@@ -85,6 +110,12 @@ function CurrentSeasonName() as String
     return "winter"
   end if
 end function
+
+function TrimWhitespace(input as Dynamic) as String
+  if input = invalid then return ""
+
+  t = type(input)
+  if t <> "roString" and t <> "String" then return ""
 
 function TrimWhitespace(input as String) as String
   if input = invalid then return ""
