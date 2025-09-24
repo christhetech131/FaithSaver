@@ -87,6 +87,10 @@ function NormalizeEntry(item as Dynamic, root as String) as String
   if entry = "" then
     return ""
   end if
+  entry = TrimWhitespace(item)
+  if entry = "" then
+    return ""
+  end if
   if t <> "roString" and t <> "String" then return ""
 
   entry = TrimWhitespace(item)
@@ -128,6 +132,12 @@ function TrimWhitespace(input as Dynamic) as String
   if t <> "roString" and t <> "String" then
     return ""
   end if
+  end if
+
+  t = type(input)
+  if t <> "roString" and t <> "String" then
+    return ""
+  end if
 
   text = input
   total = Len(text)
@@ -141,19 +151,25 @@ function TrimWhitespace(input as Dynamic) as String
 
   text = input
   total = Len(text)
-  if total <= 0 then return ""
+  if total <= 0 then
+    return ""
+  end if
 
   startIndex = 0
   while startIndex < total
     ch = Asc(Mid(text, startIndex + 1, 1))
-    if ch > 32 then exit while
+    if ch > 32 then
+      exit while
+    end if
     startIndex = startIndex + 1
   end while
 
   endIndex = total - 1
   while endIndex >= startIndex
     ch = Asc(Mid(text, endIndex + 1, 1))
-    if ch > 32 then exit while
+    if ch > 32 then
+      exit while
+    end if
     endIndex = endIndex - 1
   end while
 
