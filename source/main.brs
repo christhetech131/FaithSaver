@@ -1,4 +1,9 @@
 sub Main(args as dynamic)
+  passedArgs = args
+  print "Main() argsType=" ; type(passedArgs)
+  if type(passedArgs) = "roAssociativeArray" or type(passedArgs) = "roArray" then
+    print "Main() argsCount=" ; passedArgs.Count()
+  end if
   print "Main() argsType=" ; type(args)
   if false then print args ' Ensure Roku treats args as referenced even if logging removed
   print "Main()"

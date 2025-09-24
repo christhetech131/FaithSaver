@@ -7,6 +7,7 @@ sub init()
   m.hint = m.top.findNode("hint")
 
   m.previewDuration = 5.0       ' seconds
+  m.saverDuration   = 300.0     ' 5 minutes per project requirements
   m.saverDuration   = 300.0     ' 5 minutes per latest requirements
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
@@ -44,6 +45,11 @@ sub onModeChanged()
   if nextMode = m.mode then return
 
   print "SaverScene onModeChanged -> " ; nextMode
+
+  m.mode = nextMode
+  m.tick.control = "stop"
+  StopFeedTask()
+
 
   m.mode = nextMode
   m.tick.control = "stop"
@@ -191,7 +197,6 @@ sub StartFeedTask()
 
   StopFeedTask()
 
-
   StopFeedTask()
 
   actual = NormalizeSavedCategory(sel)
@@ -254,6 +259,30 @@ sub SetImage(i as Integer)
   if m.uris = invalid then return
   total = m.uris.count()
   if total = 0 then return
+
+  while i < 0
+    i = i + total
+  end while
+
+  if total > 0 then
+    i = i mod total
+  end if
+
+  attempts = 0
+  idx = i
+  while attempts < total
+    uri = m.uris[idx]
+    if uri <> invalid and uri <> "" then
+      m.idx = idx
+      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
+      m.img.visible = true
+      m.img.uri = uri
+      return
+    end if
+    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
+    idx = (idx + 1) mod total
+    attempts = attempts + 1
+  end while
 
   while i < 0
     i = i + total
