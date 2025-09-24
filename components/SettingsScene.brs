@@ -82,10 +82,16 @@ end sub
 function CurrentSeasonName() as String
     dt = CreateObject("roDateTime")
     mth = dt.GetMonth()
-    if mth = 3 or mth = 4 or mth = 5 then return "spring"
-    if mth = 6 or mth = 7 or mth = 8 then return "summer"
-    if mth = 9 or mth = 10 or mth = 11 then return "fall"
-    return "winter"
+
+    if mth = 3 or mth = 4 or mth = 5 then
+        return "spring"
+    else if mth = 6 or mth = 7 or mth = 8 then
+        return "summer"
+    else if mth = 9 or mth = 10 or mth = 11 then
+        return "fall"
+    else
+        return "winter"
+    end if
 end function
 
 sub BuildRows()

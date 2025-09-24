@@ -49,6 +49,15 @@ sub onModeChanged()
   m.tick.control = "stop"
   StopFeedTask()
 
+
+  if nextMode = m.mode then return
+
+  print "SaverScene onModeChanged -> " ; nextMode
+
+  m.mode = nextMode
+  m.tick.control = "stop"
+  StopFeedTask()
+
   if m.mode = "preview" then
     ConfigurePreview()
   else
@@ -64,6 +73,21 @@ sub ConfigurePreview()
   m.uris = CloneArray(m.offlineUris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
   SetImage(0)
+  m.tick.control = "start"
+end sub
+
+sub ConfigureScreensaver()
+  m.hint.text = ""
+  m.hint.visible = false
+  m.tick.duration = m.saverDuration
+  m.offlineUris = OfflineForSaved()
+  m.uris = CloneArray(m.offlineUris)
+  if m.uris.count() = 0 then m.uris.push(m.defaultUri)
+  SetImage(0)
+  StartFeedTask()
+  m.tick.control = "start"
+end sub
+
   m.tick.control = "start"
 end sub
 
@@ -167,6 +191,9 @@ sub StartFeedTask()
 
   StopFeedTask()
 
+
+  StopFeedTask()
+
   actual = NormalizeSavedCategory(sel)
 
   m.feed = CreateObject("roSGNode", "ImageFeedTask")
@@ -210,10 +237,16 @@ end sub
 function CurrentSeasonName() as String
   dt = CreateObject("roDateTime")
   mth = dt.GetMonth()
-  if mth = 3 or mth = 4 or mth = 5 then return "spring"
-  if mth = 6 or mth = 7 or mth = 8 then return "summer"
-  if mth = 9 or mth = 10 or mth = 11 then return "fall"
-  return "winter"
+
+  if mth = 3 or mth = 4 or mth = 5 then
+    return "spring"
+  else if mth = 6 or mth = 7 or mth = 8 then
+    return "summer"
+  else if mth = 9 or mth = 10 or mth = 11 then
+    return "fall"
+  else
+    return "winter"
+  end if
 end function
 
 ' Display image at index i (wraps around)
@@ -221,6 +254,31 @@ sub SetImage(i as Integer)
   if m.uris = invalid then return
   total = m.uris.count()
   if total = 0 then return
+
+  while i < 0
+    i = i + total
+  end while
+
+  if total > 0 then
+    i = i mod total
+  end if
+
+  attempts = 0
+  idx = i
+  while attempts < total
+    uri = m.uris[idx]
+    if uri <> invalid and uri <> "" then
+      m.idx = idx
+      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
+      m.img.visible = true
+      m.img.uri = uri
+      return
+    end if
+    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
+    idx = (idx + 1) mod total
+    attempts = attempts + 1
+  end while
+
 
   while i < 0
     i = i + total
