@@ -7,7 +7,7 @@ sub init()
   m.hint = m.top.findNode("hint")
 
   m.previewDuration = 5.0       ' seconds
-  m.saverDuration   = 300.0     ' 5 minutes per requirements
+  m.saverDuration   = 180.0     ' 3 minutes per latest requirements
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
