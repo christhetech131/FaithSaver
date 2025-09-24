@@ -16,11 +16,7 @@ sub go()
   end if
 
   rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
-  if cat = "seasonal" or cat = "" then cat = CurrentSeasonName()
 
-  rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
-
-  ' Fetch index.json
   url = rawRoot + "index.json"
   ut  = CreateObject("roUrlTransfer")
   ut.SetCertificatesFile("common:/certs/ca-bundle.crt")
@@ -29,75 +25,55 @@ sub go()
   jsonStr = ut.GetToString()
   code = ut.GetResponseCode()
 
-
-  uris = CreateObject("roArray", 32, true)
-  seen = CreateObject("roAssociativeArray")
-
-
-
-  uris = CreateObject("roArray", 32, true)
-  seen = CreateObject("roAssociativeArray")
-
-  if jsonStr = invalid or jsonStr = "" then
-    print "ImageFeedTask warning -> empty response code="; code
-  else if code <> 200 then
-    print "ImageFeedTask warning -> http"; code; " body ignored"
-  else
-
   uris = CreateObject("roArray", 20, true)
+  seen = CreateObject("roAssociativeArray")
 
-  if jsonStr <> invalid and jsonStr <> "" then
+  if code = 200 and jsonStr <> invalid and jsonStr <> "" then
     data = ParseJson(jsonStr)
-    if type(data) = "roAssociativeArray" and data.categories <> invalid then
-      list = data.categories[cat]
-      if type(list) = "roArray" then
-        i = 0
-        while i < list.count()
-          item = list[i]
-          if type(item) = "roString" then
-            entry = RTrim(LTrim(item))
-            if entry <> "" then
-              lower = LCase(entry)
-              uri = ""
-              if left(lower, 8) = "https://" or left(lower, 7) = "http://" then
-                uri = entry
-              else
-                if left(entry, 1) = "/" then
-                  entry = Mid(entry, 2)
-                end if
-                if left(entry, 1) = "/" then entry = Mid(entry, 2)
-                uri = rawRoot + entry
-              end if
-              if uri <> "" and not seen.doesExist(uri) then
-                seen[uri] = true
-                uris.push(uri)
-              end if
+    if type(data) = "roAssociativeArray" then
+      cats = data.categories
+      if type(cats) = "roAssociativeArray" then
+        list = cats[cat]
+        if type(list) = "roArray" then
+          i = 0
+          while i < list.count()
+            item = list[i]
+            uri = NormalizeEntry(item, rawRoot)
+            if uri <> "" and not seen.doesExist(uri) then
+              seen[uri] = true
+              uris.push(uri)
             end if
-          end if
-          i = i + 1
-        end while
+            i = i + 1
+          end while
+        end if
       end if
     end if
+  else
+    print "ImageFeedTask warning -> http"; code; " body ignored"
   end if
 
   print "ImageFeedTask complete -> category="; cat; " count="; uris.count()
   m.top.result = { uris: uris }
 end sub
 
+function NormalizeEntry(item as Dynamic, root as String) as String
+  if type(item) <> "roString" then return ""
+  entry = TrimWhitespace(item)
+  if entry = "" then return ""
+
+  lower = LCase(entry)
+  if Left(lower, 8) = "https://" or Left(lower, 7) = "http://" then
+    return entry
+  end if
+
+  if Left(entry, 1) = "/" then entry = Mid(entry, 2)
+  return root + entry
+end function
+
 function CurrentSeasonName() as String
   dt = CreateObject("roDateTime")
   mth = dt.GetMonth()
 
-  name = "winter"
-  if mth = 3 or mth = 4 or mth = 5 then
-    name = "spring"
-  else if mth = 6 or mth = 7 or mth = 8 then
-    name = "summer"
-  else if mth = 9 or mth = 10 or mth = 11 then
-    name = "fall"
-  end if
-
-  return name
   if mth = 3 or mth = 4 or mth = 5 then
     return "spring"
   else if mth = 6 or mth = 7 or mth = 8 then
@@ -107,4 +83,30 @@ function CurrentSeasonName() as String
   else
     return "winter"
   end if
+end function
+
+function TrimWhitespace(input as String) as String
+  if input = invalid then return ""
+
+  text = input
+  total = Len(text)
+  if total <= 0 then return ""
+
+  startIndex = 0
+  while startIndex < total
+    ch = Asc(Mid(text, startIndex + 1, 1))
+    if ch > 32 then exit while
+    startIndex = startIndex + 1
+  end while
+
+  endIndex = total - 1
+  while endIndex >= startIndex
+    ch = Asc(Mid(text, endIndex + 1, 1))
+    if ch > 32 then exit while
+    endIndex = endIndex - 1
+  end while
+
+  if endIndex < startIndex then return ""
+
+  return Mid(text, startIndex + 1, endIndex - startIndex + 1)
 end function

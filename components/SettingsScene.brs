@@ -1,16 +1,26 @@
 ' SettingsScene — plain labels + custom highlight (RGBA colors). No roFileSystem.
 
 sub init()
-    m.bg    = m.top.findNode("bg")
-    m.menu  = m.top.findNode("menu")
-    m.title = m.top.findNode("title")
-    m.about = m.top.findNode("about")
+    m.bg         = m.top.findNode("bg")
+    m.menu       = m.top.findNode("menu")
+    m.title      = m.top.findNode("title")
+    m.about      = m.top.findNode("about")
+    m.aboutText  = m.top.findNode("aboutText")
+    m.aboutTitle = m.top.findNode("aboutTitle")
     m.aboutVisible = false
+    m.aboutLoaded  = false
 
     ' RGBA colors (0xRRGGBBAA)
     m.colorNavy  = &h103A57FF   ' navy #103A57, fully opaque
     m.colorWhite = &hFFFFFFFF   ' white
     m.colorBlack = &h000000FF   ' black
+
+    if m.aboutText <> invalid then
+        m.aboutText.textVertAlign = "top"
+        m.aboutText.textHorizAlign = "left"
+        m.aboutText.textAttrs = { color: m.colorBlack, fontSize: 26 }
+        m.aboutText.maxLines = 0
+    end if
 
     ' Layout
     m.rowH  = 72
@@ -18,6 +28,13 @@ sub init()
     m.textX = 16
 
     print "SettingsScene.init"
+
+    m.top.close = false
+
+    if m.bg <> invalid then
+        m.bg.uri = "pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+        m.bg.loadDisplayMode = "scaleToFill"
+    end if
 
     BuildOptions()
 
@@ -152,6 +169,17 @@ sub Paint()
 end sub
 
 sub ShowAbout()
+    if not m.aboutLoaded then
+        aboutText = LoadAboutText()
+        if m.aboutTitle <> invalid then
+            m.aboutTitle.text = "About FaithSaver"
+        end if
+        if m.aboutText <> invalid then
+            m.aboutText.text = aboutText
+        end if
+        m.aboutLoaded = true
+    end if
+
     if m.about <> invalid then
         m.about.visible = true
     end if
@@ -212,4 +240,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
 
     return false
+end function
+
+function LoadAboutText() as String
+    path = "pkg:/README.md"
+    content = ReadAsciiFile(path)
+    if type(content) = "roString" and content <> "" then
+        clean = Replace(content, Chr(13) + Chr(10), Chr(10))
+        clean = Replace(clean, Chr(13), Chr(10))
+        return clean
+    end if
+
+    return "FaithSaver Screensaver\n\nREADME could not be loaded from " + path + "."
 end function
