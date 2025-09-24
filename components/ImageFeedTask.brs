@@ -27,11 +27,19 @@ sub go()
   uris = CreateObject("roArray", 32, true)
   seen = CreateObject("roAssociativeArray")
 
+
+
+  uris = CreateObject("roArray", 32, true)
+  seen = CreateObject("roAssociativeArray")
+
   if jsonStr = invalid or jsonStr = "" then
     print "ImageFeedTask warning -> empty response code="; code
   else if code <> 200 then
     print "ImageFeedTask warning -> http"; code; " body ignored"
   else
+  uris = CreateObject("roArray", 20, true)
+
+  if jsonStr <> invalid and jsonStr <> "" then
     data = ParseJson(jsonStr)
     if type(data) = "roAssociativeArray" and data.categories <> invalid then
       list = data.categories[cat]
