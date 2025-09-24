@@ -59,6 +59,7 @@ end sub
 function NormalizeEntry(item as Dynamic, root as String) as String
   if type(item) <> "roString" then return ""
   entry = TrimWhitespace(item)
+  entry = LTrim(RTrim(item))
   if entry = "" then return ""
 
   lower = LCase(entry)
