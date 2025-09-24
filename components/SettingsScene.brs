@@ -4,6 +4,8 @@ sub init()
     m.bg    = m.top.findNode("bg")
     m.menu  = m.top.findNode("menu")
     m.title = m.top.findNode("title")
+    m.about = m.top.findNode("about")
+    m.aboutVisible = false
 
     ' RGBA colors (0xRRGGBBAA)
     m.colorNavy  = &h103A57FF   ' navy #103A57, fully opaque
@@ -143,8 +145,35 @@ sub Paint()
     m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
 end sub
 
+sub ShowAbout()
+    if m.about <> invalid then
+        m.about.visible = true
+    end if
+    m.aboutVisible = true
+end sub
+
+sub HideAbout()
+    if m.about <> invalid then
+        m.about.visible = false
+    end if
+    m.aboutVisible = false
+end sub
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+
+    if m.aboutVisible then
+        if key = "back" or key = "OK" or key = "options" or key = "info" then
+            HideAbout()
+            return true
+        end if
+        return true
+    end if
+
+    if key = "options" or key = "info" then
+        ShowAbout()
+        return true
+    end if
 
     if key = "up" then
         if m.focus > 0 then

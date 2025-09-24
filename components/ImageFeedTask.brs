@@ -8,40 +8,41 @@ sub go()
   cat = LCase(m.top.category)
   if cat = "seasonal" or cat = "" then cat = CurrentSeasonName()
 
+  rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
+
   ' Fetch index.json
-  url = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/index.json"
+  url = rawRoot + "index.json"
   ut  = CreateObject("roUrlTransfer")
   ut.SetCertificatesFile("common:/certs/ca-bundle.crt")
   ut.SetUrl(url)
   ut.SetRequest("GET")
   jsonStr = ut.GetToString()
 
-  uris = CreateObject("roArray", 20, true)
+  uris = CreateObject("roArray", 32, true)
+  seen = CreateObject("roAssociativeArray")
 
   if jsonStr <> invalid and jsonStr <> "" then
-    p = CreateObject("roJSONParser")
-    data = invalid
-    ' Protect parsing
-    err = false
-    try
-      data = p.Parse(jsonStr)
-    catch
-      err = true
-    end try
-
-    if not err and data <> invalid and data.categories <> invalid then
+    data = ParseJson(jsonStr)
+    if type(data) = "roAssociativeArray" and data.categories <> invalid then
       list = data.categories[cat]
       if type(list) = "roArray" then
         i = 0 : while i < list.count()
           item = list[i]
           if type(item) = "roString" then
-            ' If item looks relative, prefix with raw GitHub root of repo
-            if left(item,8) = "https://" or left(item,7) = "http://" then
-              uris.push(item)
-            else
-              ' assume stored path like "animals/file.jpg"
-              raw = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/" + item
-              uris.push(raw)
+            entry = RTrim(LTrim(item))
+            if entry <> "" then
+              lower = LCase(entry)
+              uri = ""
+              if left(lower, 8) = "https://" or left(lower, 7) = "http://" then
+                uri = entry
+              else
+                if left(entry, 1) = "/" then entry = Mid(entry, 2)
+                uri = rawRoot + entry
+              end if
+              if uri <> "" and not seen.doesExist(uri) then
+                seen[uri] = true
+                uris.push(uri)
+              end if
             end if
           end if
           i = i + 1
@@ -50,6 +51,7 @@ sub go()
     end if
   end if
 
+  print "ImageFeedTask complete -> category="; cat; " count="; uris.count()
   m.top.result = { uris: uris }
 end sub
 
