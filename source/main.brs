@@ -1,6 +1,28 @@
 sub Main(args as dynamic)
   print "Main() -> launching preview"
   RunScreenSaverPreview()
+  passedArgs = args
+  print "Main() argsType=" ; type(passedArgs)
+  if type(passedArgs) = "roAssociativeArray" or type(passedArgs) = "roArray" then
+    print "Main() argsCount=" ; passedArgs.Count()
+  end if
+
+  print "Main() argsType=" ; type(args)
+  if false then print args ' Ensure Roku treats args as referenced even if logging removed
+  print "Main()"
+
+  mode = "screensaver"
+  if type(args) = "roAssociativeArray" then
+    if args.DoesExist("launchMode") then mode = LCase(args.launchMode)
+  end if
+
+  if mode = "preview" then
+    RunScreenSaverPreview()
+  else if mode = "settings" then
+    RunScreenSaverSettings()
+  else
+    RunScreenSaver()
+  end if
 end sub
 
 sub RunScreenSaverSettings()

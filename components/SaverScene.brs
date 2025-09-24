@@ -10,6 +10,14 @@ sub init()
 
   m.previewDuration = 5.0        ' seconds
   m.saverDuration   = 300.0      ' 5 minutes per requirements
+  m.saverDuration   = 180.0      ' 3 minutes per updated production cadence
+  m.saverDuration   = 300.0      ' 5 minutes per product requirements
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 300.0      ' 5 minutes per product requirements
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 180.0      ' 3 minutes per updated requirement
+  m.previewDuration = 5.0       ' seconds
+  m.saverDuration   = 300.0     ' 5 minutes per project requirements
   m.defaultUri      = "pkg:/images/offline/default.jpg"
   m.previewHint     = "Preview — Up/Down to cycle  •  Back to exit"
 
@@ -43,6 +51,9 @@ sub onModeChanged()
   nextMode = LCase(modeValue)
   if nextMode = "" then return
   if nextMode <> "preview" and nextMode <> "screensaver" then return
+  if nextMode <> "preview" and nextMode <> "screensaver" then
+    nextMode = "preview"
+  end if
 
   if nextMode = m.mode then return
 
@@ -72,6 +83,7 @@ sub ConfigurePreview()
   m.idx = 0
   SetImage(0)
   if m.tick <> invalid then m.tick.control = "start"
+  m.tick.control = "start"
 end sub
 
 sub ConfigureScreensaver()
@@ -432,6 +444,13 @@ function TrimWhitespace(input as Dynamic) as String
 
   if type(input) <> "roString" and type(input) <> "String" then return ""
 
+  if type(val) <> "roString" then return ""
+  return TrimWhitespace(val)
+end function
+
+function TrimWhitespace(input as String) as String
+  if input = invalid then return ""
+
   text = input
   total = Len(text)
   if total <= 0 then return ""
@@ -453,4 +472,9 @@ function TrimWhitespace(input as Dynamic) as String
   if endIndex < startIndex then return ""
 
   return Mid(text, startIndex + 1, endIndex - startIndex + 1)
+  if type(val) = "roString" then
+    trimmed = LTrim(RTrim(val))
+    return trimmed
+  end if
+  return ""
 end function

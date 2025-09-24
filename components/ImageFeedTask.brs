@@ -23,6 +23,7 @@ sub go()
   ut.SetUrl(url)
   ut.SetRequest("GET")
   jsonStr = ut.GetToString()
+  code = ut.GetResponseCode()
 
   uris = CreateObject("roArray", 20, true)
   seen = CreateObject("roAssociativeArray")
@@ -46,6 +47,23 @@ sub go()
               i = i + 1
             end while
           end if
+  if code = 200 and jsonStr <> invalid and jsonStr <> "" then
+    data = ParseJson(jsonStr)
+    if type(data) = "roAssociativeArray" then
+      cats = data.categories
+      if type(cats) = "roAssociativeArray" then
+        list = cats[cat]
+        if type(list) = "roArray" then
+          i = 0
+          while i < list.count()
+            item = list[i]
+            uri = NormalizeEntry(item, rawRoot)
+            if uri <> "" and not seen.doesExist(uri) then
+              seen[uri] = true
+              uris.push(uri)
+            end if
+            i = i + 1
+          end while
         end if
       end if
     else
@@ -53,6 +71,7 @@ sub go()
     end if
   else
     print "ImageFeedTask warning -> empty response"
+    print "ImageFeedTask warning -> http"; code; " body ignored"
   end if
 
   print "ImageFeedTask complete -> category="; cat; " count="; uris.count()
@@ -63,6 +82,9 @@ function NormalizeEntry(item as Dynamic, root as String) as String
   t = type(item)
   if t <> "roString" and t <> "String" then return ""
   entry = TrimWhitespace(item)
+  if type(item) <> "roString" then return ""
+  entry = TrimWhitespace(item)
+  entry = LTrim(RTrim(item))
   if entry = "" then return ""
 
   lower = LCase(entry)
@@ -95,6 +117,47 @@ function TrimWhitespace(input as Dynamic) as String
 
   t = type(input)
   if t <> "roString" and t <> "String" then return ""
+
+  text = input
+  total = Len(text)
+  if total <= 0 then return ""
+
+  startIndex = 0
+  while startIndex < total
+    ch = Asc(Mid(text, startIndex + 1, 1))
+    if ch > 32 then exit while
+    startIndex = startIndex + 1
+  end while
+
+  endIndex = total - 1
+  while endIndex >= startIndex
+    ch = Asc(Mid(text, endIndex + 1, 1))
+    if ch > 32 then exit while
+    endIndex = endIndex - 1
+  end while
+
+  if endIndex < startIndex then return ""
+
+  return Mid(text, startIndex + 1, endIndex - startIndex + 1)
+  if mth = 3 or mth = 4 or mth = 5 then
+    return "spring"
+  else if mth = 6 or mth = 7 or mth = 8 then
+    return "summer"
+  else if mth = 9 or mth = 10 or mth = 11 then
+    return "fall"
+  else
+    return "winter"
+  end if
+end function
+
+function TrimWhitespace(input as Dynamic) as String
+  if input = invalid then return ""
+
+  t = type(input)
+  if t <> "roString" and t <> "String" then return ""
+
+function TrimWhitespace(input as String) as String
+  if input = invalid then return ""
 
   text = input
   total = Len(text)
