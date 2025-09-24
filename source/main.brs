@@ -1,9 +1,15 @@
 sub Main(args as dynamic)
+  passedArgs = args
+  print "Main() argsType=" ; type(passedArgs)
+  if type(passedArgs) = "roAssociativeArray" or type(passedArgs) = "roArray" then
+    print "Main() argsCount=" ; passedArgs.Count()
+  end if
   ' Dev Installer: make "Go to app" useful
   RunScreenSaverPreview()
 end sub
 
 sub RunScreenSaverSettings()
+  print "RunScreenSaverSettings()"
   screen = CreateObject("roSGScreen") : port = CreateObject("roMessagePort")
   screen.SetMessagePort(port)
   scene = screen.CreateScene("SettingsScene")
@@ -16,6 +22,7 @@ sub RunScreenSaverSettings()
 end sub
 
 sub RunScreenSaverPreview()
+  print "RunScreenSaverPreview()"
   screen = CreateObject("roSGScreen") : port = CreateObject("roMessagePort")
   screen.SetMessagePort(port)
   scene = screen.CreateScene("SaverScene")
@@ -29,6 +36,7 @@ sub RunScreenSaverPreview()
 end sub
 
 sub RunScreenSaver()
+  print "RunScreenSaver()"
   screen = CreateObject("roSGScreen") : port = CreateObject("roMessagePort")
   screen.SetMessagePort(port)
   scene = screen.CreateScene("SaverScene")
