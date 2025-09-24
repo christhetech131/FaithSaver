@@ -19,6 +19,7 @@ sub init()
   m.uris = CreateObject("roArray", 0, true)
   m.idx  = 0
   m.feed = invalid
+  m.offlineUris = CreateObject("roArray", 0, true)
 
   m.tick.observeField("fire", "onTick")
   m.tick.control = "stop"
@@ -59,7 +60,8 @@ sub ConfigurePreview()
   m.hint.visible = true
   m.hint.text = m.previewHint
   m.tick.duration = m.previewDuration
-  m.uris = OfflineAllUris()
+  m.offlineUris = OfflineAllUris()
+  m.uris = CloneArray(m.offlineUris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
   SetImage(0)
   m.tick.control = "start"
@@ -69,7 +71,8 @@ sub ConfigureScreensaver()
   m.hint.text = ""
   m.hint.visible = false
   m.tick.duration = m.saverDuration
-  m.uris = OfflineForSaved()
+  m.offlineUris = OfflineForSaved()
+  m.uris = CloneArray(m.offlineUris)
   if m.uris.count() = 0 then m.uris.push(m.defaultUri)
   SetImage(0)
   StartFeedTask()
@@ -183,7 +186,9 @@ sub onFeed()
   if type(result) = "roAssociativeArray" then
     uris = result.uris
     if type(uris) = "roArray" and uris.count() > 0 then
-      m.uris = uris
+      combined = MergeWithOffline(uris, m.offlineUris)
+      if combined.count() = 0 then combined = CloneArray(m.offlineUris)
+      m.uris = combined
       m.idx = 0
       SetImage(0)
       print "SaverScene onFeed -> swapping to remote URIs count=" ; m.uris.count()
@@ -276,9 +281,62 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if lower = "back" then
       m.top.close = true
       return true
+    else if lower = "up" or lower = "down" or lower = "ok" then
+      ' Consume navigation keys in saver mode so the system does not treat the session like preview
+      return true
     end if
     return false
   end if
 
   return false
+end function
+
+' Utilities --------------------------------------------------------------
+
+function CloneArray(arr as Object) as Object
+  if type(arr) <> "roArray" then return CreateObject("roArray", 0, true)
+  copy = CreateObject("roArray", arr.count(), true)
+  i = 0
+  while i < arr.count()
+    copy.push(arr[i])
+    i = i + 1
+  end while
+  return copy
+end function
+
+function MergeWithOffline(remote as Object, offline as Object) as Object
+  result = CreateObject("roArray", 0, true)
+  seen = CreateObject("roAssociativeArray")
+
+  if type(remote) = "roArray" then
+    i = 0
+    while i < remote.count()
+      uri = NormalizeUriString(remote[i])
+      if uri <> "" and not seen.doesExist(uri) then
+        seen[uri] = true
+        result.push(uri)
+      end if
+      i = i + 1
+    end while
+  end if
+
+  if type(offline) = "roArray" then
+    i = 0
+    while i < offline.count()
+      uri = NormalizeUriString(offline[i])
+      if uri <> "" and not seen.doesExist(uri) then
+        seen[uri] = true
+        result.push(uri)
+      end if
+      i = i + 1
+    end while
+  end if
+
+  return result
+end function
+
+function NormalizeUriString(val as Dynamic) as String
+  if type(val) <> "roString" then return ""
+  trimmed = LTrim(RTrim(val))
+  return trimmed
 end function
