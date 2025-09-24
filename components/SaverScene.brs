@@ -22,6 +22,8 @@ sub init()
 
   m.tick.observeField("fire", "onTick")
   m.tick.control = "stop"
+  m.tick.repeat = true
+  m.hint.visible = false
 
   m.top.observeField("mode", "onModeChanged")
   m.top.observeField("close", "onCloseChanged")
@@ -112,17 +114,45 @@ end function
 function OfflineForSaved() as Object
   reg = CreateObject("roRegistrySection", "FaithSaver")
   sel = reg.Read("category")
-  if sel = invalid then sel = ""
-  sel = LCase(sel)
-  if sel = "seasonal" or sel = "" then sel = CurrentSeasonName()
-  if sel = "" then sel = "animals"
+  cat = NormalizeSavedCategory(sel)
 
   base = "pkg:/images/offline/"
   arr = CreateObject("roArray", 4, true)
-  arr.push(base + sel + ".jpg")
+  arr.push(base + cat + ".jpg")
   fallback = m.defaultUri
   if arr[0] <> fallback then arr.push(fallback)
   return arr
+end function
+
+function NormalizeSavedCategory(sel as Dynamic) as String
+  if type(sel) = "roString" then
+    key = LCase(sel)
+  else
+    key = ""
+  end if
+
+  if key = "seasonal" or key = "" then
+    actual = CurrentSeasonName()
+    if IsKnownCategory(actual) then return actual
+    return "animals"
+  end if
+
+  if IsKnownCategory(key) then return key
+
+  return "animals"
+end function
+
+function IsKnownCategory(cat as String) as Boolean
+  if cat = "animals" then return true
+  if cat = "fall" then return true
+  if cat = "geology" then return true
+  if cat = "scenery" then return true
+  if cat = "space" then return true
+  if cat = "spring" then return true
+  if cat = "summer" then return true
+  if cat = "textures" then return true
+  if cat = "winter" then return true
+  return false
 end function
 
 ' Launch the background task that fetches the GitHub index.json
@@ -130,14 +160,17 @@ sub StartFeedTask()
   reg = CreateObject("roRegistrySection", "FaithSaver")
   sel = reg.Read("category")
   if sel = invalid then sel = ""
+  sel = LCase(sel)
 
   StopFeedTask()
 
+  actual = NormalizeSavedCategory(sel)
+
   m.feed = CreateObject("roSGNode", "ImageFeedTask")
-  m.feed.category = sel
+  m.feed.category = actual
   m.feed.observeField("result", "onFeed")
   m.top.appendChild(m.feed)
-  print "SaverScene StartFeedTask -> category=" ; sel
+  print "SaverScene StartFeedTask -> saved=" ; sel ; " actual=" ; actual
   m.feed.control = "run"
 end sub
 
@@ -215,32 +248,32 @@ end sub
 
 ' Timer tick → advance
 sub onTick()
-  if m.tick.control = "start" then
-    SetImage(m.idx + 1)
-  end if
+  SetImage(m.idx + 1)
 end sub
 
 ' Basic navigation for preview
 function onKeyEvent(key as String, press as Boolean) as Boolean
   if not press then return false
 
+  lower = LCase(key)
+
   if m.mode = "preview" then
-    if key = "up" then
+    if lower = "up" then
       SetImage(m.idx - 1)
       return true
-    else if key = "down" then
+    else if lower = "down" then
       SetImage(m.idx + 1)
       return true
-    else if key = "back" then
+    else if lower = "back" then
       m.top.close = true
       return true
-    else if key = "OK" then
+    else if lower = "ok" then
       ' no-op in preview, but consume to avoid system beep
       return true
     end if
     return false
   else if m.mode = "screensaver" then
-    if key = "back" then
+    if lower = "back" then
       m.top.close = true
       return true
     end if

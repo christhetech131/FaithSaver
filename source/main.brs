@@ -1,5 +1,5 @@
 sub Main(args as dynamic)
-  if false then print args
+  unused = args
   print "Main()"
   ' Dev Installer: make "Go to app" useful
   RunScreenSaverPreview()

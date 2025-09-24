@@ -162,34 +162,36 @@ end sub
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
+    lower = LCase(key)
+
     if m.aboutVisible then
-        if key = "back" or key = "OK" or key = "options" or key = "info" then
+        if lower = "back" or lower = "ok" or lower = "options" or lower = "info" then
             HideAbout()
             return true
         end if
         return true
     end if
 
-    if key = "options" or key = "info" then
+    if lower = "options" or lower = "info" then
         ShowAbout()
         return true
     end if
 
-    if key = "up" then
+    if lower = "up" then
         if m.focus > 0 then
             m.focus = m.focus - 1
             Paint()
         end if
         return true
 
-    else if key = "down" then
+    else if lower = "down" then
         if m.focus < m.titles.count() - 1 then
             m.focus = m.focus + 1
             Paint()
         end if
         return true
 
-    else if key = "OK" then
+    else if lower = "ok" then
         m.selected = m.focus
         reg = CreateObject("roRegistrySection","FaithSaver")
         reg.Write("category", LCase(m.keys[m.selected]))
@@ -198,7 +200,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         Paint()
         return true
 
-    else if key = "back" then
+    else if lower = "back" then
         m.top.close = true
         return true
     end if

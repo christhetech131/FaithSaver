@@ -5,7 +5,12 @@ sub init()
 end sub
 
 sub go()
-  cat = LCase(m.top.category)
+  rawCategory = m.top.category
+  if type(rawCategory) = "roString" then
+    cat = LCase(rawCategory)
+  else
+    cat = ""
+  end if
   if cat = "seasonal" or cat = "" then cat = CurrentSeasonName()
 
   rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
@@ -17,11 +22,16 @@ sub go()
   ut.SetUrl(url)
   ut.SetRequest("GET")
   jsonStr = ut.GetToString()
+  code = ut.GetResponseCode()
 
   uris = CreateObject("roArray", 32, true)
   seen = CreateObject("roAssociativeArray")
 
-  if jsonStr <> invalid and jsonStr <> "" then
+  if jsonStr = invalid or jsonStr = "" then
+    print "ImageFeedTask warning -> empty response code="; code
+  else if code <> 200 then
+    print "ImageFeedTask warning -> http"; code; " body ignored"
+  else
     data = ParseJson(jsonStr)
     if type(data) = "roAssociativeArray" and data.categories <> invalid then
       list = data.categories[cat]
