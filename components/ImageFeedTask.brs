@@ -16,6 +16,9 @@ sub go()
   end if
 
   rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
+  if cat = "seasonal" or cat = "" then cat = CurrentSeasonName()
+
+  rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
 
   ' Fetch index.json
   url = rawRoot + "index.json"
@@ -26,6 +29,12 @@ sub go()
   jsonStr = ut.GetToString()
   code = ut.GetResponseCode()
 
+
+  uris = CreateObject("roArray", 32, true)
+  seen = CreateObject("roAssociativeArray")
+
+
+
   uris = CreateObject("roArray", 32, true)
   seen = CreateObject("roAssociativeArray")
 
@@ -34,6 +43,10 @@ sub go()
   else if code <> 200 then
     print "ImageFeedTask warning -> http"; code; " body ignored"
   else
+
+  uris = CreateObject("roArray", 20, true)
+
+  if jsonStr <> invalid and jsonStr <> "" then
     data = ParseJson(jsonStr)
     if type(data) = "roAssociativeArray" and data.categories <> invalid then
       list = data.categories[cat]
@@ -52,6 +65,7 @@ sub go()
                 if left(entry, 1) = "/" then
                   entry = Mid(entry, 2)
                 end if
+                if left(entry, 1) = "/" then entry = Mid(entry, 2)
                 uri = rawRoot + entry
               end if
               if uri <> "" and not seen.doesExist(uri) then
@@ -84,4 +98,13 @@ function CurrentSeasonName() as String
   end if
 
   return name
+  if mth = 3 or mth = 4 or mth = 5 then
+    return "spring"
+  else if mth = 6 or mth = 7 or mth = 8 then
+    return "summer"
+  else if mth = 9 or mth = 10 or mth = 11 then
+    return "fall"
+  else
+    return "winter"
+  end if
 end function
