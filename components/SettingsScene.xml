@@ -1,6 +1,6 @@
 <component name="SettingsScene" extends="Scene">
   <interface>
-    <field id="close" type="boolean" alwaysNotify="true" />
+    <field id="close" type="boolean" value="false" alwaysNotify="true" />
   </interface>
 
   <children>

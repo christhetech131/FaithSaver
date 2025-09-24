@@ -5,6 +5,9 @@ sub init()
   m.img  = m.top.findNode("img")
   m.tick = m.top.findNode("tick")
   m.hint = m.top.findNode("hint")
+
+  m.previewDuration = 5.0        ' seconds
+  m.saverDuration   = 300.0      ' 5 minutes per product requirements
   m.previewDuration = 5.0        ' seconds
   m.saverDuration   = 300.0      ' 5 minutes per product requirements
   m.previewDuration = 5.0        ' seconds
@@ -31,6 +34,8 @@ sub init()
 
   m.top.observeField("mode", "onModeChanged")
   m.top.observeField("close", "onCloseChanged")
+
+  m.top.close = false
   onModeChanged()
 
   m.top.setFocus(true)

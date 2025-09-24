@@ -29,6 +29,8 @@ sub init()
 
     print "SettingsScene.init"
 
+    m.top.close = false
+
     if m.bg <> invalid then
         m.bg.uri = "pkg:/images/FaithSaver-Splash-1920x1080.jpg"
         m.bg.loadDisplayMode = "scaleToFill"
