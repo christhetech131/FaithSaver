@@ -79,6 +79,14 @@ end sub
 
 function NormalizeEntry(item as Dynamic, root as String) as String
   t = type(item)
+  if t <> "roString" and t <> "String" then
+    return ""
+  end if
+
+  entry = TrimWhitespace(item)
+  if entry = "" then
+    return ""
+  end if
   if t <> "roString" and t <> "String" then return ""
 
   entry = TrimWhitespace(item)
@@ -89,7 +97,9 @@ function NormalizeEntry(item as Dynamic, root as String) as String
     return entry
   end if
 
-  if Left(entry, 1) = "/" then entry = Mid(entry, 2)
+  if Left(entry, 1) = "/" then
+    entry = Mid(entry, 2)
+  end if
   return root + entry
 end function
 
@@ -110,6 +120,20 @@ function CurrentSeasonName() as String
 end function
 
 function TrimWhitespace(input as Dynamic) as String
+  if input = invalid then
+    return ""
+  end if
+
+  t = type(input)
+  if t <> "roString" and t <> "String" then
+    return ""
+  end if
+
+  text = input
+  total = Len(text)
+  if total <= 0 then
+    return ""
+  end if
   if input = invalid then return ""
 
   t = type(input)
@@ -133,6 +157,9 @@ function TrimWhitespace(input as Dynamic) as String
     endIndex = endIndex - 1
   end while
 
+  if endIndex < startIndex then
+    return ""
+  end if
   if endIndex < startIndex then return ""
 
   return Mid(text, startIndex + 1, endIndex - startIndex + 1)
