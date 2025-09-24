@@ -11,6 +11,11 @@ sub go()
   else
     cat = ""
   end if
+  if cat = "seasonal" or cat = "" then
+    cat = CurrentSeasonName()
+  end if
+
+  rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
   if cat = "seasonal" or cat = "" then cat = CurrentSeasonName()
 
   rawRoot = "https://raw.githubusercontent.com/christhetech131/FaithSaver/main/"
@@ -23,6 +28,7 @@ sub go()
   ut.SetRequest("GET")
   jsonStr = ut.GetToString()
   code = ut.GetResponseCode()
+
 
   uris = CreateObject("roArray", 32, true)
   seen = CreateObject("roAssociativeArray")
@@ -37,6 +43,7 @@ sub go()
   else if code <> 200 then
     print "ImageFeedTask warning -> http"; code; " body ignored"
   else
+
   uris = CreateObject("roArray", 20, true)
 
   if jsonStr <> invalid and jsonStr <> "" then
@@ -44,7 +51,8 @@ sub go()
     if type(data) = "roAssociativeArray" and data.categories <> invalid then
       list = data.categories[cat]
       if type(list) = "roArray" then
-        i = 0 : while i < list.count()
+        i = 0
+        while i < list.count()
           item = list[i]
           if type(item) = "roString" then
             entry = RTrim(LTrim(item))
@@ -54,6 +62,9 @@ sub go()
               if left(lower, 8) = "https://" or left(lower, 7) = "http://" then
                 uri = entry
               else
+                if left(entry, 1) = "/" then
+                  entry = Mid(entry, 2)
+                end if
                 if left(entry, 1) = "/" then entry = Mid(entry, 2)
                 uri = rawRoot + entry
               end if
@@ -77,6 +88,16 @@ function CurrentSeasonName() as String
   dt = CreateObject("roDateTime")
   mth = dt.GetMonth()
 
+  name = "winter"
+  if mth = 3 or mth = 4 or mth = 5 then
+    name = "spring"
+  else if mth = 6 or mth = 7 or mth = 8 then
+    name = "summer"
+  else if mth = 9 or mth = 10 or mth = 11 then
+    name = "fall"
+  end if
+
+  return name
   if mth = 3 or mth = 4 or mth = 5 then
     return "spring"
   else if mth = 6 or mth = 7 or mth = 8 then

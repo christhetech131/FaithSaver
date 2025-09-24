@@ -82,6 +82,9 @@ sub ConfigurePreview()
   m.tick.control = "start"
 end sub
 
+  m.tick.control = "start"
+end sub
+
 sub ConfigureScreensaver()
   m.hint.text = ""
   m.hint.visible = false
@@ -197,6 +200,8 @@ sub StartFeedTask()
 
   StopFeedTask()
 
+  actual = NormalizeSavedCategory(sel)
+
   StopFeedTask()
 
   actual = NormalizeSavedCategory(sel)
@@ -259,6 +264,30 @@ sub SetImage(i as Integer)
   if m.uris = invalid then return
   total = m.uris.count()
   if total = 0 then return
+
+  while i < 0
+    i = i + total
+  end while
+
+  if total > 0 then
+    i = i mod total
+  end if
+
+  attempts = 0
+  idx = i
+  while attempts < total
+    uri = m.uris[idx]
+    if uri <> invalid and uri <> "" then
+      m.idx = idx
+      print "SaverScene SetImage -> idx=" ; m.idx ; " uri=" ; uri
+      m.img.visible = true
+      m.img.uri = uri
+      return
+    end if
+    print "SaverScene SetImage -> skipping empty uri at index=" ; idx
+    idx = (idx + 1) mod total
+    attempts = attempts + 1
+  end while
 
   while i < 0
     i = i + total
