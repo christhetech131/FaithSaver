@@ -19,17 +19,8 @@ sub go()
   uris = CreateObject("roArray", 20, true)
 
   if jsonStr <> invalid and jsonStr <> "" then
-    p = CreateObject("roJSONParser")
-    data = invalid
-    ' Protect parsing
-    err = false
-    try
-      data = p.Parse(jsonStr)
-    catch
-      err = true
-    end try
-
-    if not err and data <> invalid and data.categories <> invalid then
+    data = ParseJson(jsonStr)
+    if type(data) = "roAssociativeArray" and data.categories <> invalid then
       list = data.categories[cat]
       if type(list) = "roArray" then
         i = 0 : while i < list.count()
@@ -50,6 +41,7 @@ sub go()
     end if
   end if
 
+  print "ImageFeedTask complete -> category="; cat; " count="; uris.count()
   m.top.result = { uris: uris }
 end sub
 

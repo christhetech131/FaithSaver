@@ -78,6 +78,8 @@ sub StartFeedTask()
   m.feed = CreateObject("roSGNode","ImageFeedTask")
   m.feed.category = sel
   m.feed.observeField("result","onFeed")
+  m.top.appendChild(m.feed)
+  print "SaverScene StartFeedTask -> category="; sel
   m.feed.control = "run"
 end sub
 
@@ -89,6 +91,7 @@ sub onFeed()
       m.uris = r.uris
       m.idx = 0
       SetImage(0)
+      print "SaverScene onFeed -> swapping to remote URIs count="; m.uris.count()
     end if
   end if
 end sub
@@ -104,10 +107,18 @@ end function
 
 ' Display image at index i (wraps around)
 sub SetImage(i as Integer)
-  if m.uris = invalid or m.uris.count() = 0 then return
+  if m.uris = invalid then return
+  total = m.uris.count()
+  if total = 0 then return
 
-  if i < 0 then i = 0
-  if i >= m.uris.count() then i = 0
+  while i < 0
+    i = i + total
+  end while
+
+  if total > 0 then
+    i = i mod total
+  end if
+
   m.idx = i
 
   uri = m.uris[m.idx]
