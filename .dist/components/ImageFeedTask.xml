@@ -1,9 +1,0 @@
-<component name="ImageFeedTask" extends="Task">
-  <interface>
-    <field id="category" type="string" value=""/>
-    <field id="result" type="assocarray" alwaysNotify="true" />
-    <!-- The BRS also sets this in init(); declaring it here is harmless and explicit -->
-    <field id="functionName" type="string" value="go" />
-  </interface>
-  <script type="text/brightscript" uri="pkg:/components/ImageFeedTask.brs" />
-</component>
