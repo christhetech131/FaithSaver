@@ -17,3 +17,8 @@ splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
 splash_color=#c4dce8
 splash_min_time=1000
 
+build_version=1.0
+mm_icon_focus_hd=images/FaithSaver-Poster-540x405.jpg 
+splash_screen_fhd=images/FaithSaver-Splash-1920x1080.jpg 
+ui_resolutions=hd,fhd
+
