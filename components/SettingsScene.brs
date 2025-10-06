@@ -1,132 +1,86 @@
+' [FaithSaver] SettingsScene.brs
+
 sub init()
-  m.bg        = m.top.findNode("bg")
-  m.title     = m.top.findNode("title")
-  m.focusBar  = m.top.findNode("focusBar")
-  m.list      = m.top.findNode("listGroup")
-  m.aboutGrp  = m.top.findNode("aboutGroup")
-  m.aboutText = m.top.findNode("aboutText")
+    m.title  = m.top.findNode("title")
+    m.list   = m.top.findNode("list")
+    m.hilite = m.top.findNode("hilite")
 
-  m.options = [
-    "animals", "fall", "geology", "scenery", "space",
-    "spring", "summer", "textures", "winter", "seasonal"
-  ]
+    m.categories = [
+        "animals","fall","geology","scenery","space","spring","summer","textures","winter"
+    ]
+    m.index = getSelectedIndex(getSavedCategory())
 
-  m.rows = []
-  for i = 0 to m.options.count() - 1
-    id = "row" + i.tostr()
-    m.rows.push(m.top.findNode(id))
-  end for
+    ' Build labels
+    y = 0
+    for each cat in m.categories
+        lbl = CreateObject("roSGNode","Label")
+        lbl.text = cat
+        lbl.translation = [0, y]
+        lbl.font = "Medium"
+        m.list.appendChild(lbl)
+        y = y + 54
+    end for
 
-  current = normalizeCategory(m.top.category)
-  m.sel = 0
-  for i = 0 to m.options.count() - 1
-    if m.options[i] = current then
-      m.sel = i
-      exit for
-    end if
-  end for
+    updateTitle()
+    updateHilite()
 
-  m.top.ObserveField("keyEvent", "onKeyEvent")
-
-  applyFocus()
-  updateTitle()
+    m.top.observeField("keyEvent","onKey")
 end sub
 
-function onKeyEvent(key as String, press as Boolean) as Boolean
-  if not press then return false
+function getSavedCategory() as string
+    defaultCat = "animals"
+    sec = CreateObject("roRegistrySection","FaithSaver")
+    if sec = invalid then return defaultCat
+    if sec.DoesExist("category") then
+        cat = sec.Read("category")
+        if cat <> invalid and cat <> "" then return cat
+    end if
+    return defaultCat
+end function
 
-  lowerKey = LCase(key)
+function getSelectedIndex(cat as string) as integer
+    for i = 0 to m.categories.count()-1
+        if m.categories[i] = cat then return i
+    end for
+    return 0
+end function
 
-  if lowerKey = "back" then
-    m.top.close = true
-    return true
-  else if lowerKey = "up" then
-    adjustSelection(-1)
-    return true
-  else if lowerKey = "down" then
-    adjustSelection(1)
-    return true
-  else if lowerKey = "ok" then
-    saveSelection()
-    if m.sel >= 0 and m.sel < m.options.count() then
-      m.top.category = m.options[m.sel]
+sub updateTitle()
+    m.title.text = "Category: " + m.categories[m.index]
+end sub
+
+sub updateHilite()
+    baseY = 240 ' list group base translation Y
+    m.hilite.translation = [410, 240 + (m.index * 54)]
+end sub
+
+sub saveAndExit()
+    sec = CreateObject("roRegistrySection","FaithSaver")
+    if sec <> invalid then
+        sec.Write("category", m.categories[m.index])
+        sec.Flush()
+    else
+        print "[FaithSaver] Registry section invalid; cannot save category."
     end if
     m.top.saved = true
     m.top.close = true
-    return true
-  else if lowerKey = "options" or lowerKey = "info" then
-    toggleAbout()
-    return true
-  end if
-
-  return false
-end function
-
-sub adjustSelection(delta as Integer)
-  if m.options.count() = 0 then return
-  m.sel = (m.sel + delta + m.options.count()) mod m.options.count()
-  applyFocus()
-  updateTitle()
 end sub
 
-sub applyFocus()
-  for i = 0 to m.rows.count() - 1
-    node = m.rows[i]
-    if node <> invalid then
-      if i = m.sel then
-        node.color = "0xFFFFFFFF"
-      else
-        node.color = "0xCCFFFFFF"
-      end if
+function onKey(e as Object) as boolean
+    if e.key = "back" then
+        m.top.close = true
+        return true
+    else if e.key = "up" then
+        if m.index > 0 then m.index = m.index - 1
+        updateTitle() : updateHilite()
+        return true
+    else if e.key = "down" then
+        if m.index < m.categories.count()-1 then m.index = m.index + 1
+        updateTitle() : updateHilite()
+        return true
+    else if e.key = "OK" then
+        saveAndExit()
+        return true
     end if
-  end for
-
-  if m.focusBar <> invalid then
-    y = 320 + (m.sel * 70)
-    m.focusBar.translation = [140, y]
-  end if
-end sub
-
-sub updateTitle()
-  if m.title <> invalid then
-    m.title.text = "Category: " + m.options[m.sel]
-  end if
-end sub
-
-sub saveSelection()
-  if m.sel < 0 or m.sel >= m.options.count() then return
-
-  sec = CreateObject("roRegistrySection", "FaithSaver")
-  if sec = invalid then return
-
-  reg = sec.GetInterface("ifRegistrySection")
-  if reg = invalid then return
-
-  cat = m.options[m.sel]
-  if type(cat) <> "String" then return
-
-  normalized = LCase(TrimString(cat))
-  if normalized = "" then return
-
-  success = reg.Write("category", normalized)
-  if success then
-    reg.Flush()
-  end if
-end sub
-
-sub toggleAbout()
-  if m.aboutGrp = invalid then return
-  m.aboutGrp.visible = not m.aboutGrp.visible
-end sub
-
-function TrimString(value as Dynamic) as String
-  if type(value) <> "String" then return ""
-  return LTrim(RTrim(value))
-end function
-
-function normalizeCategory(value as Dynamic) as String
-  if type(value) <> "String" then return "animals"
-  v = LCase(LTrim(RTrim(value)))
-  if v = "" then return "animals"
-  return v
+    return false
 end function

@@ -1,192 +1,136 @@
-function main(args as dynamic) as void
-  mode = "preview"
-  entry = ""
-  if type(args) = "roAssociativeArray" and args <> invalid then
-    if args.doesExist("entry") then
-      entryValue = args.entry
-      if type(entryValue) = "String" then
-        entry = LCase(entryValue)
-      end if
+' [FaithSaver] main.brs
+' Roku SDK 10+; SceneGraph entry controller with defensive checks
+
+sub main(args as dynamic)
+    ' Defensive: args may be invalid or missing
+    entry = safeGetEntry(args)
+
+    screen = CreateObject("roSGScreen")
+    if type(screen) <> "roSGScreen" then
+        print "[FaithSaver] roSGScreen invalid, aborting."
+        return
     end if
-  end if
 
-  if entry = "runscreensaver" then
-    mode = "saver"
-  else if entry = "runscreensaverpreview" then
-    mode = "preview"
-  else if entry = "runscreensaversettings" then
-    mode = "settings"
-  end if
-
-  validateCoreAssets()
-
-  if mode = "settings" then
-    runSettingsScene()
-  else
-    runSaverScene(mode)
-  end if
-end function
-
-sub runSaverScene(mode as String)
-  screen = CreateObject("roSGScreen")
-  if screen = invalid then
-    print "[FaithSaver] Unable to create roSGScreen"
-    return
-  end if
-
-  port = CreateObject("roMessagePort")
-  if port <> invalid then
-    screen.SetMessagePort(port)
-  end if
-
-  scene = screen.CreateScene("SaverScene")
-  if scene = invalid then
-    print "[FaithSaver] SaverScene could not be created"
-    return
-  end if
-
-  category = getSavedCategory()
-  if scene.doesExist("category") then scene.category = category
-  if scene.doesExist("close") and port <> invalid then scene.ObserveField("close", port)
-
-  screen.Show()
-
-  normalized = "preview"
-  if LCase(mode) = "saver" then normalized = "saver"
-  if scene.doesExist("mode") then scene.mode = normalized
-
-  while true
-    msg = wait(0, port)
-    if type(msg) = "roSGNodeEvent" then
-      node = msg.getNode()
-      if node = scene then
-        fieldName = LCase(msg.getField())
-        if fieldName = "close" then
-          data = msg.getData()
-          if type(data) = "Boolean" and data then exit while
-        end if
-      end if
-    else if type(msg) = "roSGScreenEvent" then
-      if msg.isScreenClosed() then exit while
+    m.port = CreateObject("roMessagePort")
+    if type(m.port) <> "roMessagePort" then
+        print "[FaithSaver] roMessagePort invalid, aborting."
+        return
     end if
-  end while
-end sub
+    screen.SetMessagePort(m.port)
 
-sub runSettingsScene()
-  screen = CreateObject("roSGScreen")
-  if screen = invalid then
-    print "[FaithSaver] Unable to create settings screen"
-    return
-  end if
+    ' Asset validator — ensure 3 core images exist & are readable
+    validateCoreAssets()
 
-  port = CreateObject("roMessagePort")
-  if port <> invalid then
-    screen.SetMessagePort(port)
-  end if
+    ' Choose scene
+    sceneName = "SaverScene"
+    if entry = "runscreensaversettings" then sceneName = "SettingsScene"
 
-  scene = screen.CreateScene("SettingsScene")
-  if scene = invalid then
-    print "[FaithSaver] SettingsScene could not be created"
-    return
-  end if
+    ' Preferred attachment pattern B
+    scene = screen.CreateScene(sceneName)
+    if scene = invalid then
+        print "[FaithSaver] CreateScene failed for "; sceneName
+        return
+    end if
 
-  cat = getSavedCategory()
-  if scene.doesExist("category") then scene.category = cat
-  if scene.doesExist("close") and port <> invalid then scene.ObserveField("close", port)
-  if scene.doesExist("saved") and port <> invalid then scene.ObserveField("saved", port)
+    screen.Show()
 
-  screen.Show()
+    ' Set initial mode/category only after scene is visible to avoid races
+    if sceneName = "SaverScene" then
+        mode = "preview"
+        if entry = "runscreensaver" then mode = "saver"
+        if entry = "runscreensaverpreview" then mode = "preview"
+        ' accept any unknown by defaulting to preview
+        safeSetField(scene, "mode", mode)
+        safeSetField(scene, "category", getSavedCategory())
+    end if
 
-  while true
-    msg = wait(0, port)
-    if type(msg) = "roSGNodeEvent" then
-      node = msg.getNode()
-      if node = scene then
-        fieldName = LCase(msg.getField())
-        if fieldName = "close" then
-          data = msg.getData()
-          if type(data) = "Boolean" and data then exit while
-        else if fieldName = "saved" then
-          data = msg.getData()
-          if type(data) = "Boolean" and data then
-            if scene.doesExist("category") then
-              selected = scene.category
-              if type(selected) = "String" and selected <> "" then
-                setSavedCategory(selected)
-              end if
+    ' Wire up close/saved notifications
+    if sceneName = "SaverScene" then
+        scene.ObserveField("close", m.port)
+    else if sceneName = "SettingsScene" then
+        scene.ObserveField("close", m.port)
+        scene.ObserveField("saved", m.port)
+    end if
+
+    ' Event loop
+    while true
+        msg = wait(0, m.port)
+        if type(msg) = "roSGScreenEvent"
+            if msg.isScreenClosed() then
+                exit while
             end if
-          end if
+        else if type(msg) = "roSGNodeEvent"
+            if msg.GetField() = "close" then
+                exit while
+            end if
         end if
-      end if
-    else if type(msg) = "roSGScreenEvent" then
-      if msg.isScreenClosed() then exit while
-    end if
-  end while
+    end while
 end sub
 
-function getSavedCategory() as String
-  sec = CreateObject("roRegistrySection", "FaithSaver")
-  if sec <> invalid then
-    reg = sec.GetInterface("ifRegistrySection")
-    if reg <> invalid then
-      value = reg.Read("category", "animals")
-      if type(value) = "String" and value <> "" then
-        return LCase(value)
-      end if
+' ---------- Helpers ----------
+
+function safeGetEntry(args as dynamic) as string
+    entry = "runscreensaverpreview" ' default to preview per requirement
+    if args <> invalid and GetInterface(args, "ifAssociativeArray") <> invalid then
+        if args.entry <> invalid then
+            if type(args.entry) = "roString" or type(args.entry) = "String" then
+                entry = LCase(args.entry)
+            else if type(args.entry) = "roXMLElement" then
+                entry = LCase(args.entry.getText())
+            end if
+        end if
     end if
-  end if
-  return defaultValue
+
+    ' Normalize
+    if entry = "screensaver" then entry = "runscreensaver"
+    if entry = "" then entry = "runscreensaverpreview"
+    return entry
 end function
 
-sub setSavedCategory(cat as String)
-  if type(cat) <> "String" then return
-  trimmed = LCase(TrimString(cat))
-  if trimmed = "" then return
-  sec = CreateObject("roRegistrySection", "FaithSaver")
-  if sec = invalid then return
-  reg = sec.GetInterface("ifRegistrySection")
-  if reg = invalid then return
-  if reg.Write("category", trimmed) then
-    reg.Flush()
-  end if
-end sub
+function getSavedCategory() as string
+    defaultCat = "animals"
+    sec = CreateObject("roRegistrySection", "FaithSaver")
+    if sec = invalid then
+        print "[FaithSaver] Registry section invalid; using default category."
+        return defaultCat
+    end if
 
-function acquireRegistrySection() as Dynamic
-  primary = CreateObject("roRegistrySection", "FaithSaver")
-  if isRegistrySection(primary) then return primary
+    cat = invalid
+    ' DoesExist guards
+    if sec.DoesExist("category") then
+        cat = sec.Read("category")
+    end if
 
-  registry = CreateObject("roRegistry")
-  if registry <> invalid and type(registry) = "roRegistry" then
-    secondary = registry.GetSection("FaithSaver")
-    if isRegistrySection(secondary) then return secondary
-  end if
+    if cat = invalid or type(cat) <> "roString" and type(cat) <> "String" or cat = "" then
+        return defaultCat
+    end if
 
-  return invalid
-end function
-
-function isRegistrySection(obj as Dynamic) as Boolean
-  objType = type(obj)
-  return obj <> invalid and (objType = "roRegistrySection" or objType = "ifRegistrySection")
+    return cat
 end function
 
 sub validateCoreAssets()
-  assets = [
-    "pkg:/images/FaithSaver-BrandTile-147x113.jpg",
-    "pkg:/images/FaithSaver-Splash-1920x1080.jpg",
-    "pkg:/images/FaithSaver-Splash-1280x720.jpg"
-  ]
-
-  for each asset in assets
-    ba = CreateObject("roByteArray")
-    if ba <> invalid and ba.ReadFile(asset) and ba.Count() > 0 then
-      print "[Assets] Found & readable: " + asset + " (bytes=" + ba.Count().toStr() + ")"
-    else
-      print "[Assets] Not readable (missing or decode-hostile): " + asset
-    end if
-  next
+    core = [
+        "pkg:/images/FaithSaver-BrandTile-147x113.jpg",
+        "pkg:/images/FaithSaver-Splash-1280x720.jpg",
+        "pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+    ]
+    for each p in core
+        ba = CreateObject("roByteArray")
+        if ba = invalid then
+            print "[Assets] Not readable (missing or decode-hostile): "; p
+            return
+        end if
+        ok = ba.ReadFile(p)
+        if ok then
+            print "[Assets] Found & readable: "; p; " (bytes="; ba.Count().ToStr(); ")"
+        else
+            print "[Assets] Not readable (missing or decode-hostile): "; p
+        end if
+    end for
 end sub
 
-function TrimString(s as Dynamic) as String
-  if type(s) <> "String" then return ""
-  return LTrim(RTrim(s))
-end function
+sub safeSetField(node as Object, field as string, value as dynamic)
+    if node <> invalid and GetInterface(node, "ifSGNodeWritable") <> invalid then
+        node[field] = value
+    end if
+end sub
