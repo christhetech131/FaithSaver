@@ -1,10 +1,14 @@
 <# 
 Build-FaithSaver.ps1
 Zero-flag build for FaithSaver
-- Stages a clean package (no extraneous files)
-- Ensures required assets exist; creates an opaque app-logo.png if missing
+
+What this does:
+- PREPARES the package in .\dist\  (staging area)
+- Ensures required assets exist (auto-creates an opaque images/app-logo.png if missing)
 - Copies legacy offline JPGs into required folder structure without deleting originals
-- Verifies ZIP contents and JPEG magic bytes
+- Zips the CONTENTS of .\dist\ so 'manifest' is at the TOP LEVEL of the ZIP
+- Outputs FaithSaver.zip to the REPO ROOT (the directory you run this from)
+- Verifies required files exist in the ZIP and checks JPEG magic bytes for core images
 #>
 
 Set-StrictMode -Version Latest
@@ -16,12 +20,12 @@ Push-Location $ScriptRoot
 try {
     $root = Get-Location
 
+    # STAGING DIRECTORY: dist/
     $dist = Join-Path $root "dist"
-    if (-not (Test-Path $dist)) { New-Item -ItemType Directory -Path $dist | Out-Null }
-
-    $stageRoot = Join-Path $root "build\FaithSaver"
-    if (Test-Path $stageRoot) { Remove-Item -Recurse -Force $stageRoot }
-    New-Item -ItemType Directory -Path $stageRoot | Out-Null
+    if (Test-Path $dist) {
+        Remove-Item -Recurse -Force $dist
+    }
+    New-Item -ItemType Directory -Path $dist | Out-Null
 
     function Copy-SafeFile {
         param(
@@ -37,8 +41,8 @@ try {
 
     # Ensure opaque app-logo.png exists (create minimal opaque PNG if missing)
     $appLogoRel = "images\app-logo.png"
-    $appLogoPath = Join-Path $root $appLogoRel
-    if (-not (Test-Path $appLogoPath)) {
+    $appLogoRepoPath = Join-Path $root $appLogoRel
+    if (-not (Test-Path $appLogoRepoPath)) {
         Write-Host "[Assets] images/app-logo.png missing. Creating minimal opaque PNG..."
         $pngB64 = @"
 iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAP0lEQVR4Ae3OsQkAMAwDQd//k1qk
@@ -48,10 +52,10 @@ a0R1tQAAAABJRU5ErkJggg==
         $bytes = [Convert]::FromBase64String($pngB64)
         $logoDir = Join-Path $root "images"
         if (-not (Test-Path $logoDir)) { New-Item -ItemType Directory -Path $logoDir | Out-Null }
-        [IO.File]::WriteAllBytes($appLogoPath, $bytes)
+        [IO.File]::WriteAllBytes($appLogoRepoPath, $bytes)
     }
 
-    # REQUIRED FILES (exact)
+    # REQUIRED FILES (exact paths expected in the package)
     $required = @(
         "manifest",
         "source\main.brs",
@@ -67,18 +71,22 @@ a0R1tQAAAABJRU5ErkJggg==
         "images\app-logo.png"
     )
 
+    # Verify required exist in repo
     foreach ($rel in $required) {
         $p = Join-Path $root $rel
         if (-not (Test-Path $p)) { throw "Missing required file: $rel" }
     }
 
+    # Stage required files into dist/, preserving structure
     foreach ($rel in $required) {
-        Copy-SafeFile (Join-Path $root $rel) (Join-Path $stageRoot (Split-Path $rel -Parent))
+        $src = Join-Path $root $rel
+        $dstDir = Join-Path $dist (Split-Path $rel -Parent)
+        Copy-SafeFile $src $dstDir
     }
 
-    # Stage offline images using required folder structure, but do not remove originals
+    # Stage offline images: required folder structure under dist/images/offline/<category>/
     $categories = @("animals","fall","geology","scenery","space","spring","summer","textures","winter")
-    $offlineOutRoot = Join-Path $stageRoot "images\offline"
+    $offlineOutRoot = Join-Path $dist "images\offline"
     foreach ($cat in $categories) {
         $dst = Join-Path $offlineOutRoot $cat
         if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
@@ -113,38 +121,36 @@ a0R1tQAAAABJRU5ErkJggg==
         }
     }
 
-    # Zip creation
+    # ZIP creation (TOP LEVEL manifest)
     $zipPath = Join-Path $root "FaithSaver.zip"
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-    if (Test-Path (Join-Path $dist "FaithSaver.zip")) { Remove-Item (Join-Path $dist "FaithSaver.zip") -Force }
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    # Zip the parent directory of the staged folder so entries are "FaithSaver/..."
-    [System.IO.Compression.ZipFile]::CreateFromDirectory((Join-Path $stageRoot ".."), $zipPath)
 
-    Copy-Item $zipPath (Join-Path $dist "FaithSaver.zip") -Force
+    # Create zip by first making a temp directory that mirrors dist/, then zipping its contents
+    # CreateFromDirectory takes a directory and zips its CONTENTS at the root (no extra folder layer)
+    [System.IO.Compression.ZipFile]::CreateFromDirectory($dist, $zipPath)
 
-    # Verification: ZIP must contain our staged files (no extraneous),
-    # but only REQUIRE animals/001.jpg to exist (others are optional).
+    # Verification: ZIP must contain top-level manifest and expected paths (no 'FaithSaver/' prefix)
     $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
     $zipEntries = $zip.Entries | ForEach-Object { $_.FullName }
-    $zip.Dispose()  # <-- fixed: Dispose instead of Close
+    $zip.Dispose()  # Proper cleanup
 
     $expected = @(
-        "FaithSaver/components/SaverScene.xml",
-        "FaithSaver/components/SaverScene.brs",
-        "FaithSaver/components/SettingsScene.xml",
-        "FaithSaver/components/SettingsScene.brs",
-        "FaithSaver/components/ImageFeedTask.xml",
-        "FaithSaver/components/ImageFeedTask.brs",
-        "FaithSaver/images/FaithSaver-BrandTile-147x113.jpg",
-        "FaithSaver/images/FaithSaver-Splash-1920x1080.jpg",
-        "FaithSaver/images/FaithSaver-Splash-1280x720.jpg",
-        "FaithSaver/images/app-logo.png",
-        "FaithSaver/manifest",
-        "FaithSaver/source/main.brs",
+        "manifest",
+        "source/main.brs",
+        "components/SaverScene.xml",
+        "components/SaverScene.brs",
+        "components/SettingsScene.xml",
+        "components/SettingsScene.brs",
+        "components/ImageFeedTask.xml",
+        "components/ImageFeedTask.brs",
+        "images/FaithSaver-BrandTile-147x113.jpg",
+        "images/FaithSaver-Splash-1920x1080.jpg",
+        "images/FaithSaver-Splash-1280x720.jpg",
+        "images/app-logo.png",
         # Require at least one offline image to guarantee first-frame render
-        "FaithSaver/images/offline/animals/001.jpg"
+        "images/offline/animals/001.jpg"
     )
 
     $missing = @()
@@ -161,14 +167,13 @@ a0R1tQAAAABJRU5ErkJggg==
         return ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xD8 -and $bytes[$bytes.Length-2] -eq 0xFF -and $bytes[$bytes.Length-1] -eq 0xD9)
     }
 
-    $jpgsToTest = @(
-        "FaithSaver/images/FaithSaver-BrandTile-147x113.jpg",
-        "FaithSaver/images/FaithSaver-Splash-1280x720.jpg",
-        "FaithSaver/images/FaithSaver-Splash-1920x1080.jpg"
-    )
-
     $fs = [System.IO.File]::OpenRead($zipPath)
     $archive = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Read)
+    $jpgsToTest = @(
+        "images/FaithSaver-BrandTile-147x113.jpg",
+        "images/FaithSaver-Splash-1280x720.jpg",
+        "images/FaithSaver-Splash-1920x1080.jpg"
+    )
     foreach ($j in $jpgsToTest) {
         $entry = $archive.Entries | Where-Object { $_.FullName -eq $j }
         if ($null -eq $entry) { throw "JPEG missing in zip: $j" }
@@ -180,7 +185,9 @@ a0R1tQAAAABJRU5ErkJggg==
     $archive.Dispose()
     $fs.Dispose()
 
-    Write-Host "Build OK. Zip created at: $zipPath and copied to dist\FaithSaver.zip"
+    Write-Host "Build OK."
+    Write-Host " - Staged in: $dist"
+    Write-Host " - ZIP created at: $zipPath (manifest at ZIP root)"
 }
 finally {
     Pop-Location
