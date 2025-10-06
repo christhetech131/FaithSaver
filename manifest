@@ -1,11 +1,14 @@
 title=FaithSaver
-screensaver_title=FaithSaver
-screensaver_private=0
 major_version=1
 minor_version=0
-build_version=1000
+build_version=001
 mm_icon_focus_hd=images/FaithSaver-BrandTile-147x113.jpg
-mm_icon_focus_sd=images/FaithSaver-BrandTile-147x113.jpg
-splash_screen_fhd=images/FaithSaver-Splash-1920x1080.jpg
+mm_icon_focus_fhd=images/FaithSaver-BrandTile-147x113.jpg
 splash_screen_hd=images/FaithSaver-Splash-1280x720.jpg
-ui_resolutions=fhd,hd
+splash_screen_fhd=images/FaithSaver-Splash-1920x1080.jpg
+ui_resolutions=hd,fhd
+bs_libs_required=roku_ads_lib
+
+# Screensaver identifiers (kept simple; this is a standard SG channel that supports screensaver entry)
+# Roku will present our brand tile in "My screensavers" using the icon fields above.
+supports_input_launch=true
