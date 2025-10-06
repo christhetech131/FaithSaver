@@ -1,0 +1,6 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.[Jj][Pp][Gg] -filter -diff -merge
+*.[Jj][Pp][Ee][Gg] -filter -diff -merge
+*.[Pp][Nn][Gg] -filter -diff -merge

@@ -1,0 +1,11 @@
+title=FaithSaver
+screensaver_title=FaithSaver
+screensaver_private=0
+major_version=1
+minor_version=0
+build_version=1000
+mm_icon_focus_hd=images/FaithSaver-BrandTile-147x113.jpg
+mm_icon_focus_sd=images/FaithSaver-BrandTile-147x113.jpg
+splash_screen_fhd=images/FaithSaver-Splash-1920x1080.jpg
+splash_screen_hd=images/FaithSaver-Splash-1280x720.jpg
+ui_resolutions=fhd,hd

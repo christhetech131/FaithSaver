@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component name="SaverScene" extends="Scene">
+  <interface>
+    <field id="mode" type="string" value="preview" alwaysNotify="true" />
+    <field id="category" type="string" value="animals" alwaysNotify="true" />
+    <field id="close" type="boolean" value="false" alwaysNotify="true" />
+  </interface>
+
+  <children>
+    <Rectangle id="bgRect" translation="[0,0]" width="1920" height="1080" color="0x000000FF" />
+
+    <Poster id="imagePoster"
+            translation="[0,0]"
+            width="1920"
+            height="1080"
+            loadDisplayMode="scaleToFill"
+            visible="true" />
+
+    <Group id="overlayGroup" translation="[60, 920]">
+      <Rectangle id="overlayBg" width="1800" height="120" color="0x33000000" />
+      <Label id="overlayLabel"
+             translation="[24, 30]"
+             width="1750"
+             height="60"
+             horizAlign="left"
+             vertAlign="center"
+             font="Medium"
+             color="0xFFFFFFFF"
+             text="Press Up/Down/Back to exit preview" />
+    </Group>
+  </children>
+
+  <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
+</component>

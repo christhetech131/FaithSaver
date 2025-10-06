@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ImageFeedTask" extends="Task">
+  <interface>
+    <field id="category" type="string" value="animals" />
+    <field id="items" type="array" alwaysNotify="true" />
+    <field id="status" type="string" value="idle" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ImageFeedTask.brs" />
+</component>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component name="SettingsScene" extends="Scene">
+  <interface>
+    <field id="close" type="boolean" value="false" alwaysNotify="true" />
+    <field id="saved" type="boolean" value="false" alwaysNotify="true" />
+    <field id="category" type="string" value="animals" alwaysNotify="true" />
+  </interface>
+
+  <children>
+    <Poster id="bg" uri="pkg:/images/app-logo.png"
+            translation="[0,0]"
+            width="1920"
+            height="1080"
+            loadDisplayMode="scaleToFill" />
+
+    <Rectangle id="glass" translation="[120, 220]" width="1680" height="640" color="0x66000000" />
+
+    <Label id="title"
+           translation="[140, 240]"
+           width="1600"
+           height="60"
+           font="Large"
+           horizAlign="left"
+           vertAlign="center"
+           color="0xFFFFFFFF"
+           text="Category: animals" />
+
+    <Rectangle id="focusBar" translation="[140, 320]" width="1520" height="56" color="0xAAFFD166" />
+
+    <Group id="listGroup" translation="[160, 320]">
+      <Label id="row0" translation="[0,   0]" width="1500" height="56" text="animals"  horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row1" translation="[0,  70]" width="1500" height="56" text="fall"     horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row2" translation="[0, 140]" width="1500" height="56" text="geology"  horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row3" translation="[0, 210]" width="1500" height="56" text="scenery"  horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row4" translation="[0, 280]" width="1500" height="56" text="space"    horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row5" translation="[0, 350]" width="1500" height="56" text="spring"   horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row6" translation="[0, 420]" width="1500" height="56" text="summer"   horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row7" translation="[0, 490]" width="1500" height="56" text="textures" horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row8" translation="[0, 560]" width="1500" height="56" text="winter"   horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+      <Label id="row9" translation="[0, 630]" width="1500" height="56" text="seasonal" horizAlign="left" vertAlign="center" color="0xDDFFFFFF" />
+    </Group>
+
+    <Group id="aboutGroup" translation="[120, 840]" visible="false">
+      <Rectangle width="1680" height="200" color="0x99000000" />
+      <Label id="aboutText"
+             translation="[24, 20]"
+             width="1620"
+             height="160"
+             horizAlign="left"
+             vertAlign="top"
+             wrap="true"
+             font="Medium"
+             color="0xFFFFFFFF"
+             text="FaithSaver highlights uplifting imagery sourced from curated offline collections."
+      />
+    </Group>
+  </children>
+
+  <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
+</component>
