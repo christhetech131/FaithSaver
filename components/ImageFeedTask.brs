@@ -51,7 +51,7 @@ function getLocalItems(cat as string) as object
 end function
 
 ' Future-friendly HTTP fetcher (not used when offline)
-function httpGet(url as string, timeoutSec = 10 as integer) as object
+function httpGet(url as string, timeoutSeconds = 10 as integer) as object
     xfer = CreateObject("roUrlTransfer")
     if xfer = invalid then
         print "[EP] roUrlTransfer invalid"

@@ -6,13 +6,22 @@
   </interface>
 
   <children>
-    <Poster id="bg" uri="pkg:/images/app-logo.png" width="1920" height="1080" loadDisplayMode="scaleToFit" />
+    <!-- Simple dark background -->
+    <Rectangle id="bgRect" color="0x000000" opacity="1.0" width="1920" height="1080" />
+
+    <!-- Centered logo poster using your existing asset -->
+    <Poster id="logo"
+            uri="pkg:/images/FaithSaver-Poster-540x405.jpg"
+            width="540" height="405"
+            translation="[690,140]"
+            loadDisplayMode="scaleToFit" />
+
     <Rectangle id="glass" color="0x000000" opacity="0.35" width="1200" height="800" translation="[360,140]" />
 
     <Label id="title" text="Category:" translation="[420,180]" font="Large" />
 
     <Group id="list" translation="[420,240]">
-      <!-- We will create labels dynamically in BRS -->
+      <!-- labels added in BRS -->
     </Group>
 
     <Rectangle id="hilite" color="0xFFFFFF" opacity="0.15" width="1000" height="48" translation="[410,240]" />

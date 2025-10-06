@@ -31,7 +31,7 @@ function getSavedCategory() as string
     defaultCat = "animals"
     sec = CreateObject("roRegistrySection","FaithSaver")
     if sec = invalid then return defaultCat
-    if sec.DoesExist("category") then
+    if sec.Exists("category") then
         cat = sec.Read("category")
         if cat <> invalid and cat <> "" then return cat
     end if
@@ -50,7 +50,6 @@ sub updateTitle()
 end sub
 
 sub updateHilite()
-    baseY = 240 ' list group base translation Y
     m.hilite.translation = [410, 240 + (m.index * 54)]
 end sub
 

@@ -2,13 +2,12 @@
 Build-FaithSaver.ps1
 Zero-flag build for FaithSaver
 
-What this does:
-- PREPARES the package in .\dist\  (staging area)
-- Ensures required assets exist (auto-creates an opaque images/app-logo.png if missing)
-- Copies legacy offline JPGs into required folder structure without deleting originals
+- PREPARES the package in .\dist\
+- Copies ALL files under .\images\ except .ai/.xcf (keeps your PNG/JPGs)
+- Re-encodes the 3 core JPEGs to baseline sRGB if progressive/CMYK (fixes Roku PHY)
 - Zips the CONTENTS of .\dist\ so 'manifest' is at the TOP LEVEL of the ZIP
-- Outputs FaithSaver.zip to the REPO ROOT (the directory you run this from)
-- Verifies required files exist in the ZIP and checks JPEG magic bytes for core images
+- Outputs FaithSaver.zip to the REPO ROOT
+- Verifies required paths and JPEG magic bytes for core images
 #>
 
 Set-StrictMode -Version Latest
@@ -39,23 +38,7 @@ try {
         Copy-Item $src $out -Force
     }
 
-    # Ensure opaque app-logo.png exists (create minimal opaque PNG if missing)
-    $appLogoRel = "images\app-logo.png"
-    $appLogoRepoPath = Join-Path $root $appLogoRel
-    if (-not (Test-Path $appLogoRepoPath)) {
-        Write-Host "[Assets] images/app-logo.png missing. Creating minimal opaque PNG..."
-        $pngB64 = @"
-iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAP0lEQVR4Ae3OsQkAMAwDQd//k1qk
-YwYw3xg0wqJgD9xgRrD7P7mR4kVh6cA0p2m2n7y7xO9mQmF4A8jNw1mA0nQkZ4+2rZr2mQAAcY2l
-a0R1tQAAAABJRU5ErkJggg==
-"@ -replace '\s',''
-        $bytes = [Convert]::FromBase64String($pngB64)
-        $logoDir = Join-Path $root "images"
-        if (-not (Test-Path $logoDir)) { New-Item -ItemType Directory -Path $logoDir | Out-Null }
-        [IO.File]::WriteAllBytes($appLogoRepoPath, $bytes)
-    }
-
-    # REQUIRED FILES (exact paths expected in the package)
+    # REQUIRED (no app-logo.png anymore)
     $required = @(
         "manifest",
         "source\main.brs",
@@ -67,74 +50,109 @@ a0R1tQAAAABJRU5ErkJggg==
         "components\ImageFeedTask.brs",
         "images\FaithSaver-BrandTile-147x113.jpg",
         "images\FaithSaver-Splash-1920x1080.jpg",
-        "images\FaithSaver-Splash-1280x720.jpg",
-        "images\app-logo.png"
+        "images\FaithSaver-Splash-1280x720.jpg"
     )
-
-    # Verify required exist in repo
     foreach ($rel in $required) {
         $p = Join-Path $root $rel
         if (-not (Test-Path $p)) { throw "Missing required file: $rel" }
     }
 
-    # Stage required files into dist/, preserving structure
-    foreach ($rel in $required) {
+    # Stage code/manifest to dist
+    foreach ($rel in $required | Where-Object { -not ($_ -like 'images\*') }) {
         $src = Join-Path $root $rel
         $dstDir = Join-Path $dist (Split-Path $rel -Parent)
         Copy-SafeFile $src $dstDir
     }
 
-    # Stage offline images: required folder structure under dist/images/offline/<category>/
-    $categories = @("animals","fall","geology","scenery","space","spring","summer","textures","winter")
-    $offlineOutRoot = Join-Path $dist "images\offline"
-    foreach ($cat in $categories) {
-        $dst = Join-Path $offlineOutRoot $cat
-        if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
+    # --- JPEG re-encode to baseline sRGB for the three core images (fixes PHY) ---
+    Add-Type -AssemblyName System.Drawing
 
-        $repoFolder = Join-Path $root "images\offline\$cat"
-        $repoSingle = Join-Path $root "images\offline\$cat.jpg"
-        $copied = $false
-
-        if (Test-Path $repoFolder) {
-            $jpgs = Get-ChildItem $repoFolder -Filter *.jpg -File | Sort-Object Name
-            $i = 1
-            foreach ($j in $jpgs) {
-                $name = "{0:D3}{1}" -f $i, ".jpg"
-                Copy-SafeFile $j.FullName $dst $name
-                $i++
+    function Convert-ToBaselineJpeg {
+        param([string]$inPath, [string]$outPath)
+        try {
+            $img = [System.Drawing.Image]::FromFile($inPath)
+            try {
+                $jpegCodec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
+                $encParams = New-Object System.Drawing.Imaging.EncoderParameters(1)
+                $encParams.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, [int64]90)
+                $tmp = "$outPath.tmp"
+                $img.Save($tmp, $jpegCodec, $encParams)
+                if (Test-Path $outPath) { Remove-Item $outPath -Force }
+                Move-Item $tmp $outPath -Force
+            } finally {
+                $img.Dispose()
             }
-            if ($i -gt 1) { $copied = $true }
-        }
-
-        if (-not $copied -and (Test-Path $repoSingle)) {
-            Copy-SafeFile $repoSingle $dst "001.jpg"
-            $copied = $true
-        }
-
-        if (-not $copied) {
-            $defaultSingle = Join-Path $root "images\offline\default.jpg"
-            if (Test-Path $defaultSingle) {
-                Copy-SafeFile $defaultSingle $dst "001.jpg"
-            } else {
-                Write-Warning "No offline image found for category '$cat'. The app will still run (it shows default in code)."
-            }
+        } catch {
+            Write-Warning "Could not re-encode JPEG '$inPath' -> using original. Error: $($_.Exception.Message)"
+            Copy-Item $inPath $outPath -Force
         }
     }
 
-    # ZIP creation (TOP LEVEL manifest)
+    function Test-IsProgressiveJpeg {
+        param([string]$path)
+        try {
+            $bytes = [IO.File]::ReadAllBytes($path)
+            for ($i=0; $i -lt $bytes.Length-1; $i++) {
+                if ($bytes[$i] -eq 0xFF) {
+                    $marker = $bytes[$i+1]
+                    if ($marker -eq 0xC2) { return $true } # SOF2 progressive
+                }
+            }
+            return $false
+        } catch { return $false }
+    }
+
+    # Copy ALL images recursively, excluding .ai/.xcf; normalize the 3 core JPEGs via re-encode
+    $imagesRoot = Join-Path $root "images"
+    if (-not (Test-Path $imagesRoot)) { throw "Missing required folder: images" }
+    $imagesOut = Join-Path $dist "images"
+    New-Item -ItemType Directory -Path $imagesOut -Force | Out-Null
+
+    Get-ChildItem $imagesRoot -Recurse -File |
+        Where-Object { $_.Extension -notin @('.ai','.xcf') } |
+        ForEach-Object {
+            $relPath = $_.FullName.Substring($imagesRoot.Length).TrimStart('\','/')
+            $destDir = Join-Path $imagesOut (Split-Path $relPath -Parent)
+            $destPath = Join-Path $imagesOut $relPath
+            if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+
+            $relNorm = $relPath -replace '\\','/'
+            if ($relNorm -ieq "FaithSaver-BrandTile-147x113.jpg" -or
+                $relNorm -ieq "FaithSaver-Splash-1280x720.jpg" -or
+                $relNorm -ieq "FaithSaver-Splash-1920x1080.jpg") {
+                # Normalize critical JPEGs
+                if (Test-IsProgressiveJpeg -path $_.FullName) {
+                    Write-Host "[Assets] Re-encoding progressive JPEG to baseline: images/$relNorm"
+                }
+                Convert-ToBaselineJpeg -inPath $_.FullName -outPath $destPath
+            } else {
+                Copy-Item $_.FullName $destPath -Force
+            }
+        }
+
+    # Ensure at least one offline image exists for first-frame render
+    $animals001 = Join-Path $imagesOut "offline\animals\001.jpg"
+    if (-not (Test-Path $animals001)) {
+        $legacyAnimals = Join-Path $imagesOut "offline\animals.jpg"
+        if (Test-Path $legacyAnimals) {
+            New-Item -ItemType Directory -Path (Split-Path $animals001 -Parent) -Force | Out-Null
+            Copy-Item $legacyAnimals $animals001 -Force
+        } else {
+            Write-Warning "images/offline/animals/001.jpg not found; app will fall back to any available offline default."
+        }
+    }
+
+    # Create ZIP with top-level manifest
     $zipPath = Join-Path $root "FaithSaver.zip"
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-
-    # Create zip by first making a temp directory that mirrors dist/, then zipping its contents
-    # CreateFromDirectory takes a directory and zips its CONTENTS at the root (no extra folder layer)
     [System.IO.Compression.ZipFile]::CreateFromDirectory($dist, $zipPath)
 
-    # Verification: ZIP must contain top-level manifest and expected paths (no 'FaithSaver/' prefix)
+    # Verify ZIP contents
     $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
     $zipEntries = $zip.Entries | ForEach-Object { $_.FullName }
-    $zip.Dispose()  # Proper cleanup
+    $zip.Dispose()
 
     $expected = @(
         "manifest",
@@ -147,12 +165,8 @@ a0R1tQAAAABJRU5ErkJggg==
         "components/ImageFeedTask.brs",
         "images/FaithSaver-BrandTile-147x113.jpg",
         "images/FaithSaver-Splash-1920x1080.jpg",
-        "images/FaithSaver-Splash-1280x720.jpg",
-        "images/app-logo.png",
-        # Require at least one offline image to guarantee first-frame render
-        "images/offline/animals/001.jpg"
+        "images/FaithSaver-Splash-1280x720.jpg"
     )
-
     $missing = @()
     foreach ($e in $expected) {
         if (-not ($zipEntries -contains $e)) { $missing += $e }
@@ -161,7 +175,7 @@ a0R1tQAAAABJRU5ErkJggg==
         throw "Zip verification failed. Missing entries:`n" + ($missing -join "`n")
     }
 
-    # Optional JPEG magic bytes check for the 3 core images
+    # JPEG magic bytes check for core images inside the ZIP
     function Test-JpegMagic([byte[]] $bytes) {
         if ($bytes.Length -lt 4) { return $false }
         return ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xD8 -and $bytes[$bytes.Length-2] -eq 0xFF -and $bytes[$bytes.Length-1] -eq 0xD9)

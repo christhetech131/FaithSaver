@@ -44,7 +44,7 @@ function getSavedCategory() as string
     defaultCat = "animals"
     sec = CreateObject("roRegistrySection", "FaithSaver")
     if sec = invalid then return defaultCat
-    if sec.DoesExist("category") then
+    if sec.Exists("category") then
         cat = sec.Read("category")
         if cat <> invalid and cat <> "" then return cat
     end if
@@ -69,7 +69,6 @@ function getFirstOffline(cat as string) as string
         if fs.Exists(p) then
             list = fs.GetDirectoryListing(p)
             if list <> invalid and list.Count() > 0 then
-                ' pick first *.jpg
                 for each f in list
                     if LCase(right(f,4)) = ".jpg" then
                         return p + "/" + f

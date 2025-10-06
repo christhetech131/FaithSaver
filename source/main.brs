@@ -96,8 +96,7 @@ function getSavedCategory() as string
     end if
 
     cat = invalid
-    ' DoesExist guards
-    if sec.DoesExist("category") then
+    if sec.Exists("category") then
         cat = sec.Read("category")
     end if
 
