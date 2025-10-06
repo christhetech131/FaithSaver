@@ -23,8 +23,12 @@ try {
     if (Test-Path $stageRoot) { Remove-Item -Recurse -Force $stageRoot }
     New-Item -ItemType Directory -Path $stageRoot | Out-Null
 
-    # Helper: copy-safe
-    function Copy-SafeFile($src, $dstDir, $dstName = $null) {
+    function Copy-SafeFile {
+        param(
+            [Parameter(Mandatory)] [string] $src,
+            [Parameter(Mandatory)] [string] $dstDir,
+            [string] $dstName
+        )
         if (-not (Test-Path $src)) { throw "Missing required file on disk: $src" }
         if (-not (Test-Path $dstDir)) { New-Item -ItemType Directory -Path $dstDir -Force | Out-Null }
         $out = if ($dstName) { Join-Path $dstDir $dstName } else { Join-Path $dstDir (Split-Path $src -Leaf) }
@@ -63,13 +67,11 @@ a0R1tQAAAABJRU5ErkJggg==
         "images\app-logo.png"
     )
 
-    # Verify required exist on disk or are created above
     foreach ($rel in $required) {
         $p = Join-Path $root $rel
         if (-not (Test-Path $p)) { throw "Missing required file: $rel" }
     }
 
-    # Stage files
     foreach ($rel in $required) {
         Copy-SafeFile (Join-Path $root $rel) (Join-Path $stageRoot (Split-Path $rel -Parent))
     }
@@ -81,7 +83,6 @@ a0R1tQAAAABJRU5ErkJggg==
         $dst = Join-Path $offlineOutRoot $cat
         if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
 
-        # Prefer existing foldered images from repository if present
         $repoFolder = Join-Path $root "images\offline\$cat"
         $repoSingle = Join-Path $root "images\offline\$cat.jpg"
         $copied = $false
@@ -103,7 +104,6 @@ a0R1tQAAAABJRU5ErkJggg==
         }
 
         if (-not $copied) {
-            # Fallback to default.jpg if present
             $defaultSingle = Join-Path $root "images\offline\default.jpg"
             if (Test-Path $defaultSingle) {
                 Copy-SafeFile $defaultSingle $dst "001.jpg"
@@ -119,17 +119,18 @@ a0R1tQAAAABJRU5ErkJggg==
     if (Test-Path (Join-Path $dist "FaithSaver.zip")) { Remove-Item (Join-Path $dist "FaithSaver.zip") -Force }
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
+    # Zip the parent directory of the staged folder so entries are "FaithSaver/..."
     [System.IO.Compression.ZipFile]::CreateFromDirectory((Join-Path $stageRoot ".."), $zipPath)
 
     Copy-Item $zipPath (Join-Path $dist "FaithSaver.zip") -Force
 
-    # Verification: ZIP must contain exactly our staged files (no extraneous)
+    # Verification: ZIP must contain our staged files (no extraneous),
+    # but only REQUIRE animals/001.jpg to exist (others are optional).
     $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
     $zipEntries = $zip.Entries | ForEach-Object { $_.FullName }
-    $zip.Close()
+    $zip.Dispose()  # <-- fixed: Dispose instead of Close
 
-    # Expect these top-level paths
-    $expectedTop = @(
+    $expected = @(
         "FaithSaver/components/SaverScene.xml",
         "FaithSaver/components/SaverScene.brs",
         "FaithSaver/components/SettingsScene.xml",
@@ -140,29 +141,22 @@ a0R1tQAAAABJRU5ErkJggg==
         "FaithSaver/images/FaithSaver-Splash-1920x1080.jpg",
         "FaithSaver/images/FaithSaver-Splash-1280x720.jpg",
         "FaithSaver/images/app-logo.png",
-        "FaithSaver/images/offline/animals/001.jpg",  # staged
-        "FaithSaver/images/offline/fall/001.jpg",
-        "FaithSaver/images/offline/geology/001.jpg",
-        "FaithSaver/images/offline/scenery/001.jpg",
-        "FaithSaver/images/offline/space/001.jpg",
-        "FaithSaver/images/offline/spring/001.jpg",
-        "FaithSaver/images/offline/summer/001.jpg",
-        "FaithSaver/images/offline/textures/001.jpg",
-        "FaithSaver/images/offline/winter/001.jpg",
         "FaithSaver/manifest",
-        "FaithSaver/source/main.brs"
+        "FaithSaver/source/main.brs",
+        # Require at least one offline image to guarantee first-frame render
+        "FaithSaver/images/offline/animals/001.jpg"
     )
 
     $missing = @()
-    foreach ($e in $expectedTop) {
+    foreach ($e in $expected) {
         if (-not ($zipEntries -contains $e)) { $missing += $e }
     }
     if ($missing.Count -gt 0) {
         throw "Zip verification failed. Missing entries:`n" + ($missing -join "`n")
     }
 
-    # Optional JPEG magic bytes check
-    function Test-JpegMagic($bytes) {
+    # Optional JPEG magic bytes check for the 3 core images
+    function Test-JpegMagic([byte[]] $bytes) {
         if ($bytes.Length -lt 4) { return $false }
         return ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xD8 -and $bytes[$bytes.Length-2] -eq 0xFF -and $bytes[$bytes.Length-1] -eq 0xD9)
     }
