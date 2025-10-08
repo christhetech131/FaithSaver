@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component name="SettingsScene" extends="Scene">
+<component name="SettingsScene" extends="Scene" initialFocus="list">
     <interface>
         <field id="closeRequested" type="boolean" value="false" />
     </interface>
@@ -10,7 +10,8 @@
             id="bg"
             uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
             width="1920" height="1080"
-            translation="[0,0]" />
+            translation="[0,0]"
+            loadDisplayMode="scaleToFill" />
 
         <!-- A simple list for settings -->
         <LabelList
@@ -20,4 +21,6 @@
             numRows="7"
             vertFocusAnimationStyle="floatingFocus" />
     </children>
+
+    <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
 </component>
