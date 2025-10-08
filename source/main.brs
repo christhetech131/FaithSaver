@@ -38,25 +38,29 @@ sub RunScreenSaverSettings()
     screen.SetMessagePort(port)
 
     scene = screen.CreateScene("SettingsScene")
-    if scene = invalid then return
-
-    ' Reset the close flag each time settings is launched
-    scene.closeRequested = false
-    scene.ObserveField("closeRequested", port)
+    if scene <> invalid then
+        scene.SetFocus(true)
+        scene.ObserveField("closeRequested", m.port)
+    end if
 
     screen.Show()
     scene.control = "RUN"
     scene.SetFocus(true)
 
+    if scene <> invalid then
+        scene.SetFocus(true)
+    end if
+
     ' wait until user exits
     while true
         msg = wait(0, port)
         if msg = invalid then
-            ' nothing pending yet; keep waiting
+            ' nothing to do
         else if type(msg) = "roSGScreenEvent" then
             if msg.isScreenClosed() then exit while
         else if type(msg) = "roSGNodeEvent" then
-            if msg.GetField() = "closeRequested" and msg.GetData() = true then
+            node = msg.GetNode()
+            if node <> invalid and node = scene and msg.GetField() = "closeRequested" and msg.GetData() = true then
                 exit while
             end if
         end if
