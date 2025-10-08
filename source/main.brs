@@ -39,7 +39,8 @@ sub RunScreenSaverSettings()
 
     scene = screen.CreateScene("SettingsScene")
     if scene <> invalid then
-        scene.ObserveField("closeRequested", port)
+        scene.SetFocus(true)
+        scene.ObserveField("closeRequested", m.port)
     end if
 
     screen.Show()
@@ -56,8 +57,9 @@ sub RunScreenSaverSettings()
         else if type(msg) = "roSGScreenEvent" then
             if msg.isScreenClosed() then exit while
         else if type(msg) = "roSGNodeEvent" then
-            if msg.GetNode() = scene and msg.GetField() = "closeRequested" then
-                if msg.GetData() = true then exit while
+            node = msg.GetNode()
+            if node <> invalid and node = scene and msg.GetField() = "closeRequested" and msg.GetData() = true then
+                exit while
             end if
         end if
     end while
