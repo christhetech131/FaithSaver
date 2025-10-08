@@ -3,17 +3,19 @@ sub init()
     m.top.setFocus(true)
     m.list = m.top.findNode("list")
 
-    ' White text, Navy highlight requirements
-    ' (Use built-in fields for readability; keep it simple and consistent.)
-    m.list.itemTextColor        = "0xFFFFFFFF" ' white
-    m.list.focusBitmapBlendColor = "0x001F3FFF" ' navy-ish focus bar (ARGB -> 0xAARRGGBB; here AA=00 means we rely on built-in opacity)
-    m.list.focusBitmapUri       = ""           ' default highlight bar with our blend color
+    if m.list <> invalid then
+        ' White text, Navy highlight requirements
+        ' Use blend color to tint the default highlight bar.
+        m.list.itemTextColor         = "0xFFFFFFFF" ' white
+        m.list.focusBitmapBlendColor = "0xFF001F3F" ' opaque navy
+        m.list.focusBitmapUri        = ""            ' default highlight bar with our blend color
 
-    ' minimal example items
-    m.list.content = CreateSettingsContent()
+        ' minimal example items
+        m.list.content = CreateSettingsContent()
 
-    ' ensure the list can receive keys
-    m.list.setFocus(true)
+        ' ensure the list can receive keys
+        m.list.setFocus(true)
+    end if
 end sub
 
 function CreateSettingsContent() as object
@@ -39,13 +41,15 @@ end function
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
 
+    key = LCase(key)
+
     if key = "back" or key = "home" then
         ' Signal our parent loop to exit settings cleanly
         m.top.closeRequested = true
         return true
     end if
 
-    if key = "OK"
+    if key = "ok"
         if m.list <> invalid then
             idx = m.list.itemFocused
             ' Example: last item exits
