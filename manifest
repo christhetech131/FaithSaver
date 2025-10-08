@@ -1,14 +1,23 @@
 title=FaithSaver
 major_version=1
 minor_version=0
-build_version=001
-mm_icon_focus_hd=images/FaithSaver-BrandTile-147x113.jpg
-mm_icon_focus_fhd=images/FaithSaver-BrandTile-147x113.jpg
-splash_screen_hd=images/FaithSaver-Splash-1280x720.jpg
-splash_screen_fhd=images/FaithSaver-Splash-1920x1080.jpg
-ui_resolutions=hd,fhd
-bs_libs_required=roku_ads_lib
+build_version=1008
 
-# Screensaver identifiers (kept simple; this is a standard SG channel that supports screensaver entry)
-# Roku will present our brand tile in "My screensavers" using the icon fields above.
-supports_input_launch=true
+# This is a screensaver app
+is_screensaver=true
+
+# UI resolutions supported
+ui_resolutions=hd,fhd
+
+# Splash images (must be baseline JPEGs). Use pkg:/ to avoid PHY errors.
+splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
+splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
+
+# Brand tile used in “My screensavers”. Keep single canonical filename (opaque JPEG).
+mm_icon_focus_hd=pkg:/images/FaithSaver-BrandTile-147x113.jpg
+mm_icon_focus_fhd=pkg:/images/FaithSaver-BrandTile-147x113.jpg
+
+# Channel entry points (SceneGraph app with dynamic routing handled in main.brs)
+# Roku may still invoke runuserinterface for settings; main.brs handles both.
+run_screen_saver=RunScreenSaver
+run_screen_saver_settings=RunScreenSaverSettings

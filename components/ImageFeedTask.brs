@@ -29,7 +29,6 @@ function getLocalItems(cat as string) as object
     if fs.Exists(base) then
         list = fs.GetDirectoryListing(base)
         if list <> invalid then
-            ' collect jpgs, simple sort for stability
             jpgs = []
             for each f in list
                 if LCase(right(f,4)) = ".jpg" then jpgs.push(f)
@@ -60,7 +59,10 @@ function httpGet(url as string, timeoutSeconds = 10 as integer) as object
     xfer.SetUrl(url)
     xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
     xfer.InitClientCertificates()
-
+    ' Use the parameter so it’s not “unused”
+    if GetInterface(xfer, "ifUrlTransfer") <> invalid then
+        xfer.SetRequestTimeout(timeoutSeconds * 1000)
+    end if
     rsp = xfer.GetToString()
     return rsp
 end function

@@ -1,4 +1,5 @@
 ' [FaithSaver] SaverScene.brs
+' Roku SDK 10+ — exit on ANY key, no render-thread FS calls, defensive guards
 
 sub init()
     m.bg      = m.top.findNode("bg")
@@ -6,38 +7,43 @@ sub init()
     m.cycler  = m.top.findNode("cycler")
     m.feed    = m.top.findNode("feed")
 
+    if m.bg = invalid or m.overlay = invalid or m.cycler = invalid or m.feed = invalid then
+        print "[FaithSaver] SaverScene nodes missing; aborting init."
+        return
+    end if
+
     ' Normalize mode
     mode = LCase(m.top.mode)
     if mode = "screensaver" then mode = "saver"
     if mode <> "saver" and mode <> "preview" then mode = "preview"
     m.top.mode = mode
 
-    ' Read category (fallback to registry in case field is empty)
+    ' Category (fallback to registry)
     cat = m.top.category
     if cat = invalid or cat = "" then
         cat = getSavedCategory()
         m.top.category = cat
     end if
 
-    ' Show overlay only in preview
+    ' Overlay only in preview
     m.overlay.visible = (mode = "preview")
 
-    ' Immediately show first offline image (no grey flash)
+    ' Immediate first frame (no filesystem calls on render thread)
     showImmediateOffline(cat)
 
-    ' Kick off feed task
+    ' Feed task (off render thread)
     m.feed.category = cat
     m.feed.ObserveField("items", "onFeedItems")
     m.feed.control = "run"
 
-    ' Start cycling
+    ' Cycle
     m.idx = 0
-    m.items = [] ' will be populated by task
+    m.items = []
     m.cycler.ObserveField("fire", "onTick")
     m.cycler.control = "start"
 
-    ' Close behavior
-    m.top.observeField("keyEvent", "onKey")
+    ' Ensure the Scene actually receives key events
+    m.top.setFocus(true)
 end sub
 
 function getSavedCategory() as string
@@ -52,36 +58,18 @@ function getSavedCategory() as string
 end function
 
 sub showImmediateOffline(cat as string)
-    uri = getFirstOffline(cat)
-    if uri <> "" then
-        m.bg.uri = uri
-    else
-        ' Absolute fallback
-        m.bg.uri = "pkg:/images/offline/default.jpg"
-    end if
-end sub
+    ' Try canonical locations without touching filesystem APIs on the render thread
+    p1 = "pkg:/images/offline/" + cat + "/001.jpg"
+    p2 = "pkg:/images/offline/" + cat + ".jpg"
+    p3 = "pkg:/images/offline/default.jpg"
 
-function getFirstOffline(cat as string) as string
-    fs = CreateObject("roFileSystem")
-    if fs <> invalid then
-        ' Preferred structure: pkg:/images/offline/<category>/
-        p = "pkg:/images/offline/" + cat
-        if fs.Exists(p) then
-            list = fs.GetDirectoryListing(p)
-            if list <> invalid and list.Count() > 0 then
-                for each f in list
-                    if LCase(right(f,4)) = ".jpg" then
-                        return p + "/" + f
-                    end if
-                end for
-            end if
-        end if
-        ' Legacy single file fallback: pkg:/images/offline/<category>.jpg
-        legacy = "pkg:/images/offline/" + cat + ".jpg"
-        if fs.Exists(legacy) then return legacy
+    ' Poster silently ignores missing URIs; build script aims to ensure animals/001.jpg exists
+    if cat <> "" then
+        m.bg.uri = p1
+        if m.bg.uri <> p1 then m.bg.uri = p2
     end if
-    return ""
-end function
+    if m.bg.uri <> p1 and m.bg.uri <> p2 then m.bg.uri = p3
+end sub
 
 sub onFeedItems()
     it = m.feed.items
@@ -100,17 +88,11 @@ sub onTick()
     m.bg.uri = m.items[m.idx]
 end sub
 
-function onKey(e as Object) as boolean
-    if m.top.mode = "saver" then
-        ' Close on ANY key
+' Close on ANY key in both saver and preview modes
+function onKeyEvent(key as string, press as boolean) as boolean
+    if press and key <> "" then
         m.top.close = true
         return true
-    else
-        ' Preview: Back/Up/Down close as requested
-        if e.key = "back" or e.key = "up" or e.key = "down" then
-            m.top.close = true
-            return true
-        end if
     end if
     return false
 end function

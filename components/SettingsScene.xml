@@ -1,32 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SettingsScene" extends="Scene">
-  <interface>
-    <field id="close" type="boolean" alwaysNotify="true" />
-    <field id="saved" type="boolean" alwaysNotify="true" />
-  </interface>
+    <interface>
+        <field id="closeRequested" type="boolean" value="false" />
+    </interface>
 
-  <children>
-    <!-- Simple dark background -->
-    <Rectangle id="bgRect" color="0x000000" opacity="1.0" width="1920" height="1080" />
+    <children>
+        <!-- Background -->
+        <Poster
+            id="bg"
+            uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+            width="1920" height="1080"
+            translation="[0,0]" />
 
-    <!-- Centered logo poster using your existing asset -->
-    <Poster id="logo"
-            uri="pkg:/images/FaithSaver-Poster-540x405.jpg"
-            width="540" height="405"
-            translation="[690,140]"
-            loadDisplayMode="scaleToFit" />
-
-    <Rectangle id="glass" color="0x000000" opacity="0.35" width="1200" height="800" translation="[360,140]" />
-
-    <Label id="title" text="Category:" translation="[420,180]" font="Large" />
-
-    <Group id="list" translation="[420,240]">
-      <!-- labels added in BRS -->
-    </Group>
-
-    <Rectangle id="hilite" color="0xFFFFFF" opacity="0.15" width="1000" height="48" translation="[410,240]" />
-    <Label id="hint" text="OK to save • Back to exit" translation="[420,980]" font="Small" />
-  </children>
-
-  <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
+        <!-- A simple list for settings -->
+        <LabelList
+            id="list"
+            translation="[240, 280]"
+            itemSize="[1440, 60]"
+            numRows="7"
+            vertFocusAnimationStyle="floatingFocus" />
+    </children>
 </component>

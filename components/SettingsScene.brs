@@ -1,85 +1,60 @@
-' [FaithSaver] SettingsScene.brs
-
+' ===== SettingsScene.brs =====
 sub init()
-    m.title  = m.top.findNode("title")
-    m.list   = m.top.findNode("list")
-    m.hilite = m.top.findNode("hilite")
+    m.top.setFocus(true)
+    m.list = m.top.findNode("list")
 
-    m.categories = [
-        "animals","fall","geology","scenery","space","spring","summer","textures","winter"
+    ' White text, Navy highlight requirements
+    ' (Use built-in fields for readability; keep it simple and consistent.)
+    m.list.itemTextColor        = "0xFFFFFFFF" ' white
+    m.list.focusBitmapBlendColor = "0x001F3FFF" ' navy-ish focus bar (ARGB -> 0xAARRGGBB; here AA=00 means we rely on built-in opacity)
+    m.list.focusBitmapUri       = ""           ' default highlight bar with our blend color
+
+    ' minimal example items
+    m.list.content = CreateSettingsContent()
+
+    ' ensure the list can receive keys
+    m.list.setFocus(true)
+end sub
+
+function CreateSettingsContent() as object
+    rows = [
+        { title: "Theme: Classic" }
+        { title: "Show Verse: On" }
+        { title: "Rotation Speed: Normal" }
+        { title: "Clock: Off" }
+        { title: "Reset to Defaults" }
+        { title: "About FaithSaver" }
+        { title: "Back" }
     ]
-    m.index = getSelectedIndex(getSavedCategory())
 
-    ' Build labels
-    y = 0
-    for each cat in m.categories
-        lbl = CreateObject("roSGNode","Label")
-        lbl.text = cat
-        lbl.translation = [0, y]
-        lbl.font = "Medium"
-        m.list.appendChild(lbl)
-        y = y + 54
+    root = CreateObject("roSGNode", "ContentNode")
+    for each r in rows
+        n = CreateObject("roSGNode", "ContentNode")
+        n.title = r.title
+        root.appendChild(n)
     end for
-
-    updateTitle()
-    updateHilite()
-
-    m.top.observeField("keyEvent","onKey")
-end sub
-
-function getSavedCategory() as string
-    defaultCat = "animals"
-    sec = CreateObject("roRegistrySection","FaithSaver")
-    if sec = invalid then return defaultCat
-    if sec.Exists("category") then
-        cat = sec.Read("category")
-        if cat <> invalid and cat <> "" then return cat
-    end if
-    return defaultCat
+    return root
 end function
 
-function getSelectedIndex(cat as string) as integer
-    for i = 0 to m.categories.count()-1
-        if m.categories[i] = cat then return i
-    end for
-    return 0
-end function
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
 
-sub updateTitle()
-    m.title.text = "Category: " + m.categories[m.index]
-end sub
-
-sub updateHilite()
-    m.hilite.translation = [410, 240 + (m.index * 54)]
-end sub
-
-sub saveAndExit()
-    sec = CreateObject("roRegistrySection","FaithSaver")
-    if sec <> invalid then
-        sec.Write("category", m.categories[m.index])
-        sec.Flush()
-    else
-        print "[FaithSaver] Registry section invalid; cannot save category."
-    end if
-    m.top.saved = true
-    m.top.close = true
-end sub
-
-function onKey(e as Object) as boolean
-    if e.key = "back" then
-        m.top.close = true
-        return true
-    else if e.key = "up" then
-        if m.index > 0 then m.index = m.index - 1
-        updateTitle() : updateHilite()
-        return true
-    else if e.key = "down" then
-        if m.index < m.categories.count()-1 then m.index = m.index + 1
-        updateTitle() : updateHilite()
-        return true
-    else if e.key = "OK" then
-        saveAndExit()
+    if key = "back" or key = "home" then
+        ' Signal our parent loop to exit settings cleanly
+        m.top.closeRequested = true
         return true
     end if
+
+    if key = "OK"
+        if m.list <> invalid then
+            idx = m.list.itemFocused
+            ' Example: last item exits
+            if idx = m.list.content.GetChildCount() - 1
+                m.top.closeRequested = true
+                return true
+            end if
+        end if
+    end if
+
     return false
 end function
