@@ -34,25 +34,31 @@ end sub
 sub RunScreenSaverSettings()
     ' dedicated settings screen that blocks until Back/Home
     screen = CreateObject("roSGScreen")
-    m.port = CreateObject("roMessagePort")
-    screen.SetMessagePort(m.port)
+    port = CreateObject("roMessagePort")
+    screen.SetMessagePort(port)
 
     scene = screen.CreateScene("SettingsScene")
+    if scene = invalid then return
+
+    scene.ObserveField("closeRequested", port)
+
     screen.Show()
+    scene.control = "RUN"
+    scene.SetFocus(true)
 
     ' wait until user exits
     while true
-        msg = wait(0, m.port)
+        msg = wait(0, port)
         if type(msg) = "roSGScreenEvent" then
             if msg.isScreenClosed() then exit while
         else if type(msg) = "roSGNodeEvent" then
-            if msg.GetNode() <> invalid and msg.GetField() = "closeRequested" and msg.GetData() = true
+            if msg.GetField() = "closeRequested" and msg.GetData() = true then
                 exit while
             end if
         end if
     end while
 
-    ' screen auto-closes on exit of sub
+    screen.Close()
 end sub
 
 ' --- dev launcher / channel launch router ---
@@ -93,5 +99,6 @@ end sub
 
 ' Roku calls main for legacy. Keep minimal.
 sub main(args as dynamic)
+    if args <> invalid then : end if ' suppress unused warning from compiler
     RunUserInterface()
 end sub
