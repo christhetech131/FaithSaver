@@ -6,14 +6,15 @@ sub init()
 
     if m.list <> invalid then
         ' White text, Navy highlight requirements
+        ' Use blend color to tint the default highlight bar.
         m.list.itemTextColor         = "0xFFFFFFFF" ' white
-        m.list.focusBitmapUri        = ""            ' ensure blend color applies
         m.list.focusBitmapBlendColor = "0xFF001F3F" ' opaque navy
+        m.list.focusBitmapUri        = ""            ' default highlight bar with our blend color
 
-        ' populate list content
+        ' minimal example items
         m.list.content = CreateSettingsContent()
 
-        ' give focus to the list so keys are handled
+        ' ensure the list can receive keys
         m.list.setFocus(true)
     end if
 end sub
