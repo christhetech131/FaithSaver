@@ -44,6 +44,8 @@ sub RunScreenSaverSettings()
     end if
 
     screen.Show()
+    scene.control = "RUN"
+    scene.SetFocus(true)
 
     if scene <> invalid then
         scene.SetFocus(true)
@@ -64,7 +66,7 @@ sub RunScreenSaverSettings()
         end if
     end while
 
-    ' screen auto-closes on exit of sub
+    screen.Close()
 end sub
 
 ' --- dev launcher / channel launch router ---

@@ -1,5 +1,6 @@
 ' ===== SettingsScene.brs =====
 sub init()
+    m.top.closeRequested = false
     m.top.setFocus(true)
     m.list = m.top.findNode("list")
 
