@@ -20,12 +20,12 @@ end sub
 
 function CreateSettingsContent() as object
     rows = [
-        { title: "Theme: Classic" }
-        { title: "Show Verse: On" }
-        { title: "Rotation Speed: Normal" }
-        { title: "Clock: Off" }
-        { title: "Reset to Defaults" }
-        { title: "About FaithSaver" }
+        { title: "Theme: Classic" },
+        { title: "Show Verse: On" },
+        { title: "Rotation Speed: Normal" },
+        { title: "Clock: Off" },
+        { title: "Reset to Defaults" },
+        { title: "About FaithSaver" },
         { title: "Back" }
     ]
 
@@ -52,10 +52,13 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "ok"
         if m.list <> invalid then
             idx = m.list.itemFocused
-            ' Example: last item exits
-            if idx = m.list.content.GetChildCount() - 1
-                m.top.closeRequested = true
-                return true
+            content = m.list.content
+            if content <> invalid then
+                backIndex = content.GetChildCount() - 1
+                if idx = backIndex then
+                    m.top.closeRequested = true
+                    return true
+                end if
             end if
         end if
     end if
