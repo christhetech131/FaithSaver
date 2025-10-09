@@ -1,29 +1,38 @@
 ' ===== SettingsScene.brs =====
 sub init()
+    log("init start")
+
+    m.top.closeRequested = false
     m.top.setFocus(true)
     m.list = m.top.findNode("list")
 
-    ' White text, Navy highlight requirements
-    ' (Use built-in fields for readability; keep it simple and consistent.)
-    m.list.itemTextColor        = "0xFFFFFFFF" ' white
-    m.list.focusBitmapBlendColor = "0x001F3FFF" ' navy-ish focus bar (ARGB -> 0xAARRGGBB; here AA=00 means we rely on built-in opacity)
-    m.list.focusBitmapUri       = ""           ' default highlight bar with our blend color
+    if m.list = invalid then
+        log("LabelList node not found; settings UI cannot receive focus")
+        return
+    end if
 
-    ' minimal example items
+    ' White text, Navy highlight requirements
+    m.list.itemTextColor         = "0xFFFFFFFF" ' white
+    m.list.focusBitmapUri        = ""            ' ensure blend color applies
+    m.list.focusBitmapBlendColor = "0xFF001F3F" ' opaque navy
+
+    ' populate list content
     m.list.content = CreateSettingsContent()
 
-    ' ensure the list can receive keys
+    ' give focus to the list so keys are handled
     m.list.setFocus(true)
+
+    log("LabelList configured; settings scene ready")
 end sub
 
 function CreateSettingsContent() as object
     rows = [
-        { title: "Theme: Classic" }
-        { title: "Show Verse: On" }
-        { title: "Rotation Speed: Normal" }
-        { title: "Clock: Off" }
-        { title: "Reset to Defaults" }
-        { title: "About FaithSaver" }
+        { title: "Theme: Classic" },
+        { title: "Show Verse: On" },
+        { title: "Rotation Speed: Normal" },
+        { title: "Clock: Off" },
+        { title: "Reset to Defaults" },
+        { title: "About FaithSaver" },
         { title: "Back" }
     ]
 
@@ -39,22 +48,39 @@ end function
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
 
-    if key = "back" or key = "home" then
+    lower = LCase(key)
+    log("onKeyEvent press key=" + lower)
+
+    if lower = "back" or lower = "home" then
         ' Signal our parent loop to exit settings cleanly
         m.top.closeRequested = true
+        log("closeRequested set from back/home")
         return true
     end if
 
-    if key = "OK"
+    if lower = "ok"
         if m.list <> invalid then
             idx = m.list.itemFocused
-            ' Example: last item exits
-            if idx = m.list.content.GetChildCount() - 1
-                m.top.closeRequested = true
-                return true
+            content = m.list.content
+            if content <> invalid then
+                backIndex = content.GetChildCount() - 1
+                log("OK pressed on index=" + StrI(idx) + " backIndex=" + StrI(backIndex))
+                if idx = backIndex then
+                    m.top.closeRequested = true
+                    log("closeRequested set from Back menu item")
+                    return true
+                end if
+            else
+                log("LabelList content invalid on OK press")
             end if
+        else
+            log("LabelList missing during OK press")
         end if
     end if
 
     return false
 end function
+
+sub log(message as string)
+    print "[FaithSaver][SettingsScene] " + message
+end sub
