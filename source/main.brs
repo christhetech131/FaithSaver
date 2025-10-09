@@ -50,49 +50,40 @@ sub RunScreenSaverPreview()
 end sub
 
 sub RunScreenSaverSettings()
-    screen = CreateObject("roSGScreen")
-    if type(screen) <> "roSGScreen" then
-        Log("Settings", "Failed to create roSGScreen")
-        return
-    end if
+    Log("Settings", "RunScreenSaverSettings invoked")
 
+    screen = CreateObject("roSGScreen")
     port = CreateObject("roMessagePort")
-    if type(port) <> "roMessagePort" then
-        Log("Settings", "Failed to create roMessagePort")
-        return
-    end if
     screen.SetMessagePort(port)
 
     scene = screen.CreateScene("SettingsScene")
-    if scene = invalid then
-        Log("Settings", "Unable to create SettingsScene")
-        return
+    if scene <> invalid then
+        scene.SetFocus(true)
+        scene.ObserveField("closeRequested", m.port)
     end if
 
-    scene.closeRequested = false
-    scene.ObserveField("closeRequested", port)
-
-    screen.SetScene(scene)
-
     screen.Show()
+    scene.control = "RUN"
+    scene.SetFocus(true)
+
+    if scene <> invalid then
+        scene.SetFocus(true)
+    end if
 
     while true
         msg = wait(0, port)
-
         if msg = invalid then
-            ' continue waiting
-        elseif type(msg) = "roSGScreenEvent" then
+            ' nothing to do
+        else if type(msg) = "roSGScreenEvent" then
             if msg.isScreenClosed() then exit while
-        elseif type(msg) = "roSGNodeEvent" then
-            if msg.GetNode() = scene and msg.GetField() = "closeRequested" then
-                if scene.closeRequested = true or msg.GetData() = true then
-                    exit while
-                end if
+        else if type(msg) = "roSGNodeEvent" then
+            node = msg.GetNode()
+            if node <> invalid and node = scene and msg.GetField() = "closeRequested" and msg.GetData() = true then
+                exit while
             end if
         end if
     end while
 
-    scene.UnobserveField("closeRequested")
     screen.Close()
 end sub
 
@@ -145,6 +136,13 @@ sub ShowSaverScene(isPreview as boolean)
 
     screen.Show()
 
+    if isPreview then
+        Log("Saver", "Preview mode launched")
+    else
+        Log("Saver", "Saver mode launched")
+    end if
+
+    ' Let the SaverScene control exit behavior. (You said Home-only exit is acceptable.)
     while true
         msg = wait(0, port)
         if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then
@@ -155,10 +153,6 @@ end sub
 
 ' Roku calls main for legacy. Keep minimal.
 sub main(args as dynamic)
-    if args <> invalid then
-        Log("Main", "main() received args")
-    else
-        Log("Main", "main() received invalid args")
-    end if
-    RunUserInterface(args)
+    if args <> invalid then : end if ' suppress unused warning from compiler
+    RunUserInterface()
 end sub
