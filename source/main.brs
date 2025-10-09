@@ -126,8 +126,8 @@ end function
 ' --- shared saver scene launcher ---
 sub ShowSaverScene(isPreview as boolean)
     screen = CreateObject("roSGScreen")
-    m.port = CreateObject("roMessagePort")
-    screen.SetMessagePort(m.port)
+    port = CreateObject("roMessagePort")
+    screen.SetMessagePort(port)
 
     scene = screen.CreateScene("SaverScene")
     if scene <> invalid then
@@ -144,7 +144,7 @@ sub ShowSaverScene(isPreview as boolean)
 
     ' Let the SaverScene control exit behavior. (You said Home-only exit is acceptable.)
     while true
-        msg = wait(0, m.port)
+        msg = wait(0, port)
         if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then
             exit while
         end if
