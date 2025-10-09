@@ -47,6 +47,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "back" or key = "home" then
         ' Signal our parent loop to exit settings cleanly
         m.top.closeRequested = true
+        log("closeRequested set from back/home")
         return true
     end if
 
@@ -61,8 +62,14 @@ function onKeyEvent(key as string, press as boolean) as boolean
                     return true
                 end if
             end if
+        else
+            log("LabelList missing during OK press")
         end if
     end if
 
     return false
 end function
+
+sub log(message as string)
+    print "[FaithSaver][SettingsScene] " + message
+end sub
