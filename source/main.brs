@@ -53,50 +53,37 @@ sub RunScreenSaverSettings()
     Log("Settings", "RunScreenSaverSettings invoked")
 
     screen = CreateObject("roSGScreen")
-    if type(screen) <> "roSGScreen" then
-        Log("Settings", "roSGScreen creation failed; aborting settings entry")
-        return
-    end if
-
     port = CreateObject("roMessagePort")
-    if type(port) <> "roMessagePort" then
-        Log("Settings", "roMessagePort creation failed; aborting settings entry")
-        return
-    end if
     screen.SetMessagePort(port)
 
-    scene = CreateObject("roSGNode", "SettingsScene")
-    if scene = invalid then
-        Log("Settings", "Unable to instantiate SettingsScene")
-        return
+    scene = screen.CreateScene("SettingsScene")
+    if scene <> invalid then
+        scene.SetFocus(true)
+        scene.ObserveField("closeRequested", m.port)
     end if
 
-    scene.closeRequested = false
-    scene.ObserveField("closeRequested", port)
+    screen.Show()
+    scene.control = "RUN"
     scene.SetFocus(true)
 
-    screen.SetScene(scene)
-    screen.Show()
-
-    Log("Settings", "Entering settings event loop")
+    if scene <> invalid then
+        scene.SetFocus(true)
+    end if
 
     while true
         msg = wait(0, port)
         if msg = invalid then
-            ' keep waiting
+            ' nothing to do
         else if type(msg) = "roSGScreenEvent" then
-            Log("Settings", "roSGScreenEvent: isScreenClosed=" + SafeToString(msg.isScreenClosed()))
             if msg.isScreenClosed() then exit while
         else if type(msg) = "roSGNodeEvent" then
-            field = SafeToString(msg.GetField())
-            Log("Settings", "roSGNodeEvent field=" + field + " data=" + SafeToString(msg.GetData()))
-            if field = "closeRequested" and msg.GetData() = true then exit while
-        else
-            Log("Settings", "Unhandled message type: " + type(msg))
+            node = msg.GetNode()
+            if node <> invalid and node = scene and msg.GetField() = "closeRequested" and msg.GetData() = true then
+                exit while
+            end if
         end if
     end while
 
-    Log("Settings", "Exiting settings event loop")
     screen.Close()
 end sub
 
@@ -166,10 +153,6 @@ end sub
 
 ' Roku calls main for legacy. Keep minimal.
 sub main(args as dynamic)
-    if args <> invalid then
-        Log("Main", "main() received args")
-    else
-        Log("Main", "main() received invalid args")
-    end if
-    RunUserInterface(args)
+    if args <> invalid then : end if ' suppress unused warning from compiler
+    RunUserInterface()
 end sub
