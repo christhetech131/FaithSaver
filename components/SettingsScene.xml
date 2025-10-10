@@ -5,6 +5,9 @@
         <field id="currentCategory" type="string" value="scenery" />
     </interface>
 
+    <!-- IMPORTANT: wire BR script so init()/onKeyEvent run -->
+    <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
+
     <children>
         <!-- Background logo (full screen) -->
         <Poster
@@ -14,7 +17,7 @@
             loadDisplayMode="scaleToFill"
             translation="[0,0]" />
 
-        <!-- Header shows currently selected category -->
+        <!-- Header: current category -->
         <Label
             id="header"
             translation="[60, 60]"
@@ -23,8 +26,7 @@
             text="Current category: (loading...)"
             color="0xFFFFFFFF" />
 
-        <!-- Categories list -->
-        <!-- NOTE: comments are placed between elements, not inside the start tag -->
+        <!-- Category list -->
         <LabelList
             id="list"
             translation="[60, 140]"

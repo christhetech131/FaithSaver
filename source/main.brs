@@ -7,7 +7,7 @@ sub FSLogMain(msg as string)
     print "[FaithSaver][Main] " + msg
 end sub
 
-' Safe string conversion (no boolean math or risky coercions)
+' Safe string conversion
 function SafeToString(v as dynamic) as string
     if v = invalid then return ""
     t = type(v)
@@ -56,7 +56,7 @@ sub RunScreenSaverSettings()
     scene.ObserveField("closeRequested", port)
 
     screen.Show()
-    FSLogMain("Settings: shown")
+    FSLogMain("Settings: shown (entering loop)")
 
     ' Block here until either the screen is closed or the scene requests close.
     while true
@@ -64,18 +64,29 @@ sub RunScreenSaverSettings()
         mt = type(msg)
 
         if mt = "roSGScreenEvent" then
+            FSLogMain("Settings: roSGScreenEvent")
             if msg.isScreenClosed() then
                 FSLogMain("Settings: screen closed")
                 exit while
             end if
 
         else if mt = "roSGNodeEvent" then
+            nodeName = ""
+            fName    = ""
+            if msg <> invalid then
+                n = msg.GetNode()
+                if n <> invalid then nodeName = n.GetName()
+                fName = msg.GetField()
+            end if
+            FSLogMain("Settings: roSGNodeEvent node=" + SafeToString(nodeName) + " field=" + SafeToString(fName))
             if msg.GetNode() = scene and msg.GetField() = "closeRequested" then
                 if scene.closeRequested = true then
                     FSLogMain("Settings: closeRequested=true")
                     exit while
                 end if
             end if
+        else
+            FSLogMain("Settings: unexpected msg type " + SafeToString(mt))
         end if
     end while
 
@@ -106,10 +117,7 @@ sub ShowSaver(isPreview as boolean)
     FSLogMain("SaverScene created OK")
 
     ' Set mode/isPreview fields if the scene exposes them.
-    ' We avoid boolean "and/or" expressions to keep it portable across firmwares.
     if isPreview = true then
-        ' If SaverScene supports a textual mode, set it
-        ' (If the field doesn't exist, Roku will ignore SetField silently on SceneGraph nodes.)
         saver.SetField("mode", "preview")
         saver.SetField("isPreview", true)
     else
@@ -117,14 +125,13 @@ sub ShowSaver(isPreview as boolean)
         saver.SetField("isPreview", false)
     end if
 
-    ' If your SaverScene emits a "close" boolean, you can observe it here.
-    ' We WON'T introspect fields (no GetFields/DoesExist); observing a non-existent field is benign.
+    ' Optional: observe "close" if SaverScene emits it.
     saver.ObserveField("close", port)
 
     screen.Show()
-
     FSLogMain("ShowSaver: Show done, entering loop")
-    ' Standard SG loop: exit when the screen closes, or when the scene (optionally) toggles "close".
+
+    ' Standard SG loop: exit when the screen closes, or when the scene toggles "close".
     while true
         msg = wait(0, port)
         mt = type(msg)

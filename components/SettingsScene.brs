@@ -1,12 +1,15 @@
 ' components/SettingsScene.brs
-' Minimal, stable settings scene
+' Minimal, stable settings scene with explicit focus and colors
 
 function S(v as dynamic) as string
     if v = invalid then return ""
     t = type(v)
     if t = "roString" or t = "String" then return v
-    if t = "Boolean" then return (v = true) and "true" or "false"
+    if t = "Boolean" then
+        if v = true then return "true" else return "false"
+    end if
     if t = "Integer" or t = "LongInteger" then return StrI(v)
+    if t = "Float" or t = "Double" then return Str(v)
     return Str(v)
 end function
 
@@ -14,16 +17,29 @@ sub init()
     m.list   = m.top.findNode("list")
     m.header = m.top.findNode("header")
 
+    ' Roku sometimes closes the screen if nothing has focus; make it explicit.
+    m.top.setFocus(true)
+    if m.list <> invalid then m.list.setFocus(true)
+
+    ' Apply your color scheme from code (more consistent across firmware)
+    ' Unfocused text = rgba(38,112,157) => 0xFF26709D, Focused text = white, highlight bar = rgba(11,55,84) => 0xFF0B3754
+    if m.list <> invalid then
+        m.list.itemTextColor = "0xFF26709D"
+        m.list.itemFocusedTextColor = "0xFFFFFFFF"
+        m.list.focusBitmapBlendColor = "0xFF0B3754"
+    end if
+
+    ' Categories per your spec
     m.categories = [
         "animals", "fall", "geology", "scenery",
         "space", "spring", "summer", "textures",
         "winter", "seasonal"
     ]
 
-    ' initial label text
+    ' Initial label text
     updateHeader()
 
-    ' build list content
+    ' Build list content
     content = createObject("roSGNode", "ContentNode")
     for each name in m.categories
         item = createObject("roSGNode", "ContentNode")
@@ -31,11 +47,7 @@ sub init()
         item.shortDescriptionLine1 = name
         content.appendChild(item)
     end for
-    m.list.content = content
-
-    ' give focus so keys work and the screen stays visible
-    m.top.setFocus(true)
-    m.list.setFocus(true)
+    if m.list <> invalid then m.list.content = content
 end sub
 
 sub updateHeader()
@@ -53,12 +65,12 @@ function getStoredCategory() as string
     reg = CreateObject("roRegistrySection", "FaithSaver")
     val = reg.Read("category")
     if val = invalid or val = "" then return "scenery"
-    return val
+    return LCase(val)
 end function
 
 sub setStoredCategory(cat as string)
     reg = CreateObject("roRegistrySection", "FaithSaver")
-    reg.Write("category", cat)
+    reg.Write("category", LCase(cat))
     reg.Flush()
 end sub
 
@@ -81,16 +93,18 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
 
     if key = "OK" then
+        if m.list = invalid then return true
         idx = m.list.itemFocused
         if idx <> invalid and idx >= 0 and idx < m.categories.count()
             sel = m.categories[idx]
             if sel = "seasonal" then sel = resolveSeasonal()
             setStoredCategory(sel)
             updateHeader()
-            ' stay on screen; user exits with Back/Home
+            ' stays on screen; user exits with Back/Home
         end if
         return true
     end if
 
+    ' Arrows navigate the list naturally
     return false
 end function
