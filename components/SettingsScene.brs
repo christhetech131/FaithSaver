@@ -1,5 +1,4 @@
 ' components/SettingsScene.brs
-' Minimal, stable settings scene with explicit focus and colors
 
 function S(v as dynamic) as string
     if v = invalid then return ""
@@ -14,53 +13,46 @@ function S(v as dynamic) as string
 end function
 
 sub init()
+    print "[FaithSaver][Settings] init()"
     m.list   = m.top.findNode("list")
     m.header = m.top.findNode("header")
 
-    ' Roku sometimes closes the screen if nothing has focus; make it explicit.
+    ' Focus behavior
     m.top.setFocus(true)
     if m.list <> invalid then m.list.setFocus(true)
 
-    ' Apply your color scheme from code (more consistent across firmware)
-    ' Unfocused text = rgba(38,112,157) => 0xFF26709D, Focused text = white, highlight bar = rgba(11,55,84) => 0xFF0B3754
+    ' Colors per spec
     if m.list <> invalid then
-        m.list.itemTextColor = "0xFF26709D"
-        m.list.itemFocusedTextColor = "0xFFFFFFFF"
-        m.list.focusBitmapBlendColor = "0xFF0B3754"
+        m.list.itemTextColor         = "0xFF26709D" ' rgba(38,112,157)
+        m.list.itemFocusedTextColor  = "0xFFFFFFFF" ' white
+        m.list.focusBitmapBlendColor = "0xFF0B3754" ' rgba(11,55,84)
     end if
 
-    ' Categories per your spec
+    ' Categories
     m.categories = [
         "animals", "fall", "geology", "scenery",
         "space", "spring", "summer", "textures",
         "winter", "seasonal"
     ]
 
-    ' Initial label text
-    updateHeader()
-
-    ' Build list content
+    ' Populate content
     content = createObject("roSGNode", "ContentNode")
     for each name in m.categories
         item = createObject("roSGNode", "ContentNode")
-        item.title = capitalize(name)
+        item.title = UCase(Left(name,1)) + Mid(name,2)
         item.shortDescriptionLine1 = name
         content.appendChild(item)
     end for
     if m.list <> invalid then m.list.content = content
+
+    updateHeader()
 end sub
 
 sub updateHeader()
-    sel = getStoredCategory()
-    m.header.text = "Current category: " + capitalize(sel)
+    cat = getStoredCategory()
+    m.header.text = "Current category: " + UCase(Left(cat,1)) + Mid(cat,2)
 end sub
 
-function capitalize(s as string) as string
-    if s = invalid or Len(s) = 0 then return ""
-    return UCase(Left(s,1)) + Mid(s,2)
-end function
-
-' Read/write selected category from registry (or default)
 function getStoredCategory() as string
     reg = CreateObject("roRegistrySection", "FaithSaver")
     val = reg.Read("category")
@@ -74,37 +66,38 @@ sub setStoredCategory(cat as string)
     reg.Flush()
 end sub
 
-' Resolve "seasonal" to concrete category by date
 function resolveSeasonal() as string
     d = CreateObject("roDateTime")
-    month = d.GetMonth() ' 1..12
-    if month = 12 or month <= 2 then return "winter"
-    if month >= 3 and month <= 5 then return "spring"
-    if month >= 6 and month <= 8 then return "summer"
+    m = d.GetMonth()
+    if m = 12 or m <= 2 then return "winter"
+    if m >= 3 and m <= 5 then return "spring"
+    if m >= 6 and m <= 8 then return "summer"
     return "fall"
 end function
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
 
-    if key = "back" or key = "home" then
+    k = LCase(key)
+    if k = "back" or k = "home" then
+        print "[FaithSaver][Settings] Back/Home -> closeRequested"
         m.top.closeRequested = true
         return true
     end if
 
-    if key = "OK" then
+    if k = "ok" then
         if m.list = invalid then return true
         idx = m.list.itemFocused
         if idx <> invalid and idx >= 0 and idx < m.categories.count()
             sel = m.categories[idx]
             if sel = "seasonal" then sel = resolveSeasonal()
+            print "[FaithSaver][Settings] Selected: " + S(sel)
             setStoredCategory(sel)
             updateHeader()
-            ' stays on screen; user exits with Back/Home
         end if
         return true
     end if
 
-    ' Arrows navigate the list naturally
+    ' Arrow keys: let LabelList handle navigation
     return false
 end function

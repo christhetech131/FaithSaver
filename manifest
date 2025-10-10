@@ -19,5 +19,5 @@ mm_icon_focus_fhd=pkg:/images/FaithSaver-BrandTile-147x113.jpg
 
 # Channel entry points
 run_screen_saver=RunScreenSaver
-run_screen_saver_settings=RunScreenSaverSettings
 run_screen_saver_preview=RunScreenSaverPreview
+run_screen_saver_settings=RunScreenSaverSettings

@@ -5,11 +5,10 @@
         <field id="currentCategory" type="string" value="scenery" />
     </interface>
 
-    <!-- IMPORTANT: wire BR script so init()/onKeyEvent run -->
     <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
 
     <children>
-        <!-- Background logo (full screen) -->
+        <!-- Background logo -->
         <Poster
             id="bg"
             uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
