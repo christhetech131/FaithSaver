@@ -1,32 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SaverScene" extends="Scene">
-  <interface>
-    <field id="mode" type="string" value="preview" />
-    <field id="close" type="boolean" alwaysNotify="true" />
-    <field id="category" type="string" />
-  </interface>
+    <interface>
+        <!-- Set by main.brs: "saver" or "preview" -->
+        <field id="mode" type="string" value="saver" />
+        <!-- Observed by main.brs to exit -->
+        <field id="close" type="boolean" value="false" />
+    </interface>
 
-  <children>
-    <!-- Background image -->
-    <Poster
-      id="bg"
-      width="1920"
-      height="1080"
-      translation="[0,0]"
-      loadDisplayMode="scaleToFill" />
+    <!-- Wire the BrightScript for this component -->
+    <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
 
-    <!-- Optional overlay for preview mode -->
-    <Group id="overlay" visible="false">
-      <Rectangle id="glass" width="1920" height="100" color="0x000000" opacity="0.3" />
-      <Label id="title" text="FaithSaver" translation="[60,30]" font="Medium" />
-      <Label id="hint" text="Press Back to exit preview" translation="[60,60]" font="Small" />
-    </Group>
+    <children>
+        <!-- Double-buffered backgrounds -->
+        <Poster
+            id="bgA"
+            width="1920" height="1080"
+            translation="[0,0]"
+            loadDisplayMode="scaleToFill"
+            visible="true" />
+        <Poster
+            id="bgB"
+            width="1920" height="1080"
+            translation="[0,0]"
+            loadDisplayMode="scaleToFill"
+            visible="false" />
 
-    <!-- Timer drives image cycling -->
-    <Timer id="cycler" repeat="true" duration="15.0" />
-    <!-- ImageFeedTask node -->
-    <ImageFeedTask id="feed" />
-  </children>
+        <!-- Rotation timer: started only in mode="saver" -->
+        <Timer id="cycler" duration="180.0" repeat="true" />
 
-  <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
+        <!-- Optional feed task (no invalid fields like "type") -->
+        <Task id="feed" />
+    </children>
 </component>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="ImageFeedTask" extends="Task">
-  <interface>
-    <field id="category" type="string" />
-    <field id="items" type="array" />
-    <field id="status" type="string" />
-  </interface>
-  <script type="text/brightscript" uri="pkg:/components/ImageFeedTask.brs" />
+    <interface>
+        <field id="category" type="string" value="" />
+        <field id="items" type="array" />
+        <field id="status" type="string" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/ImageFeedTask.brs" />
 </component>

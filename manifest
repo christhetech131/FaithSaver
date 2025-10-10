@@ -1,7 +1,7 @@
 title=FaithSaver
 major_version=1
 minor_version=0
-build_version=1008
+build_version=0
 
 # This is a screensaver app
 is_screensaver=true
@@ -9,7 +9,7 @@ is_screensaver=true
 # UI resolutions supported
 ui_resolutions=hd,fhd
 
-# Splash images (must be baseline JPEGs). Use pkg:/ to avoid PHY errors.
+# Splash images (baseline JPEGs). Use pkg:/ to avoid PHY errors.
 splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
 splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
 
@@ -17,7 +17,7 @@ splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
 mm_icon_focus_hd=pkg:/images/FaithSaver-BrandTile-147x113.jpg
 mm_icon_focus_fhd=pkg:/images/FaithSaver-BrandTile-147x113.jpg
 
-# Channel entry points (SceneGraph app with dynamic routing handled in main.brs)
-# Roku may still invoke runuserinterface for settings; main.brs handles both.
+# Channel entry points
 run_screen_saver=RunScreenSaver
 run_screen_saver_settings=RunScreenSaverSettings
+run_screen_saver_preview=RunScreenSaverPreview

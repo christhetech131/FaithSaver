@@ -1,158 +1,147 @@
-' ===== FaithSaver main.brs =====
+' ==========================
+' FaithSaver - source/main.brs
+' ==========================
 
-' --- helpers ---
-sub Log(tag as string, message as string)
-    print "[FaithSaver][" + tag + "] " + message
+' -------- Logging helpers --------
+sub FSLogMain(msg as string)
+    print "[FaithSaver][Main] " + msg
 end sub
 
-function SafeToString(x as dynamic) as string
-    if x = invalid then return ""
-    ' avoid any accidental variable shadowing of tostr()
-    return "" + x
+' Safe string conversion (no boolean math or risky coercions)
+function SafeToString(v as dynamic) as string
+    if v = invalid then return ""
+    t = type(v)
+    if t = "roString" or t = "String" then return v
+    if t = "Boolean" then
+        if v = true then return "true" else return "false"
+    end if
+    if t = "Integer" or t = "LongInteger" then return StrI(v)
+    if t = "Float" or t = "Double" then return Str(v)
+    return Str(v)
 end function
 
-function SafeLower(value as dynamic) as string
-    return LCase(SafeToString(value))
-end function
+' -------- Entry points declared in manifest --------
+' manifest:
+'   run_screen_saver=RunScreenSaver
+'   run_screen_saver_preview=RunScreenSaverPreview
+'   run_screen_saver_settings=RunScreenSaverSettings
 
-function GetRunParams() as object
-    am = CreateObject("roAppManager")
-    if am = invalid then return {}
-    p = am.GetRunParams()
-    if p = invalid then return {}
-    return p
-end function
-
-function GetParam(key as string) as string
-    p = GetRunParams()
-    if GetInterface(p, "ifAssociativeArray") = invalid then return ""
-    v = p.Lookup(key)
-    return SafeToString(v)
-end function
-
-function GetArgValue(args as dynamic, key as string) as string
-    if args = invalid then return ""
-    if GetInterface(args, "ifAssociativeArray") = invalid then return ""
-
-    value = invalid
-    if args[key] <> invalid then value = args[key]
-    if value = invalid then value = args.Lookup(key)
-    return SafeToString(value)
-end function
-
-' --- entrypoints required by manifest ---
+' Called by Roku when the actual screensaver runs due to inactivity.
 sub RunScreenSaver()
-    ShowSaverScene(false)
+    FSLogMain("RunScreenSaver: enter")
+    ShowSaver(false)
 end sub
 
+' Called by Roku when the user selects "Preview" from Settings > Theme > Screensavers.
 sub RunScreenSaverPreview()
-    ShowSaverScene(true)
+    FSLogMain("RunScreenSaverPreview: enter")
+    ShowSaver(true)
 end sub
 
+' Called when the user chooses Settings > Theme > Screensavers > FaithSaver > Change screensaver settings.
 sub RunScreenSaverSettings()
-    Log("Settings", "RunScreenSaverSettings invoked")
+    FSLogMain("Settings: enter")
 
     screen = CreateObject("roSGScreen")
-    port = CreateObject("roMessagePort")
+    port   = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
 
     scene = screen.CreateScene("SettingsScene")
-    if scene <> invalid then
-        scene.SetFocus(true)
-        scene.ObserveField("closeRequested", m.port)
+    if scene = invalid then
+        FSLogMain("ERROR: SettingsScene failed to create")
+        return
     end if
+
+    ' Observe a simple boolean field that the scene will flip when the user wants to exit.
+    scene.ObserveField("closeRequested", port)
 
     screen.Show()
-    scene.control = "RUN"
-    scene.SetFocus(true)
+    FSLogMain("Settings: shown")
 
-    if scene <> invalid then
-        scene.SetFocus(true)
-    end if
-
+    ' Block here until either the screen is closed or the scene requests close.
     while true
         msg = wait(0, port)
-        if msg = invalid then
-            ' nothing to do
-        else if type(msg) = "roSGScreenEvent" then
-            if msg.isScreenClosed() then exit while
-        else if type(msg) = "roSGNodeEvent" then
-            node = msg.GetNode()
-            if node <> invalid and node = scene and msg.GetField() = "closeRequested" and msg.GetData() = true then
+        mt = type(msg)
+
+        if mt = "roSGScreenEvent" then
+            if msg.isScreenClosed() then
+                FSLogMain("Settings: screen closed")
                 exit while
+            end if
+
+        else if mt = "roSGNodeEvent" then
+            if msg.GetNode() = scene and msg.GetField() = "closeRequested" then
+                if scene.closeRequested = true then
+                    FSLogMain("Settings: closeRequested=true")
+                    exit while
+                end if
             end if
         end if
     end while
 
-    screen.Close()
+    FSLogMain("Settings: exit")
 end sub
 
-' --- dev launcher / channel launch router ---
-sub RunUserInterface(optional args as dynamic)
-    ' Only for dev channel preview. DO NOT route to settings here unless actually launched by Settings.
-    argSource = SafeLower(GetArgValue(args, "source"))
-    argEntry  = SafeLower(GetArgValue(args, "entry"))
-    argReason = SafeLower(GetArgValue(args, "reason"))
-
-    paramSource = SafeLower(GetParam("source"))
-    paramEntry  = SafeLower(GetParam("entry"))
-    paramReason = SafeLower(GetParam("reason"))
-
-    Log("Router", "args source=" + argSource + " entry=" + argEntry + " reason=" + argReason)
-    Log("Router", "params source=" + paramSource + " entry=" + paramEntry + " reason=" + paramReason)
-
-    ' If Roku Settings launched us, go to settings; otherwise show the preview saver
-    if shouldShowSettings(argSource, argEntry, argReason, paramSource, paramEntry, paramReason) then
-        Log("Router", "Routing to settings from RunUserInterface")
-        RunScreenSaverSettings()
-    else
-        Log("Router", "Routing to preview from RunUserInterface")
-        RunScreenSaverPreview()
-    end if
+' Dev/side-load entry (app tile on Home screen). Per your spec: run the PRODUCTION saver here.
+sub RunUserInterface()
+    FSLogMain("RunUserInterface: enter (PRODUCTION saver)")
+    RunScreenSaver()
+    FSLogMain("RunUserInterface: exit")
 end sub
 
-function shouldShowSettings(argSource as string, argEntry as string, argReason as string, paramSource as string, paramEntry as string, paramReason as string) as boolean
-    if instr(1, argSource, "settings") > 0 then return true
-    if instr(1, argEntry, "settings") > 0 then return true
-    if instr(1, argReason, "settings") > 0 then return true
+' -------- Shared UI runner --------
+sub ShowSaver(isPreview as boolean)
+    FSLogMain("ShowSaver: enter; isPreview=" + SafeToString(isPreview))
 
-    if instr(1, paramSource, "settings") > 0 then return true
-    if instr(1, paramEntry, "settings") > 0 then return true
-    if instr(1, paramReason, "settings") > 0 then return true
-
-    return false
-end function
-
-' --- shared saver scene launcher ---
-sub ShowSaverScene(isPreview as boolean)
     screen = CreateObject("roSGScreen")
-    port = CreateObject("roMessagePort")
+    port   = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
 
-    scene = screen.CreateScene("SaverScene")
-    if scene <> invalid then
-        scene.isPreview = isPreview
+    ' Create the main Saver scene
+    saver = screen.CreateScene("SaverScene")
+    if saver = invalid then
+        FSLogMain("ERROR: SaverScene failed to create via CreateScene")
+        return
     end if
+    FSLogMain("SaverScene created OK")
+
+    ' Set mode/isPreview fields if the scene exposes them.
+    ' We avoid boolean "and/or" expressions to keep it portable across firmwares.
+    if isPreview = true then
+        ' If SaverScene supports a textual mode, set it
+        ' (If the field doesn't exist, Roku will ignore SetField silently on SceneGraph nodes.)
+        saver.SetField("mode", "preview")
+        saver.SetField("isPreview", true)
+    else
+        saver.SetField("mode", "saver")
+        saver.SetField("isPreview", false)
+    end if
+
+    ' If your SaverScene emits a "close" boolean, you can observe it here.
+    ' We WON'T introspect fields (no GetFields/DoesExist); observing a non-existent field is benign.
+    saver.ObserveField("close", port)
 
     screen.Show()
 
-    if isPreview then
-        Log("Saver", "Preview mode launched")
-    else
-        Log("Saver", "Saver mode launched")
-    end if
-
-    ' Let the SaverScene control exit behavior. (You said Home-only exit is acceptable.)
+    FSLogMain("ShowSaver: Show done, entering loop")
+    ' Standard SG loop: exit when the screen closes, or when the scene (optionally) toggles "close".
     while true
         msg = wait(0, port)
-        if type(msg) = "roSGScreenEvent" and msg.isScreenClosed() then
-            exit while
+        mt = type(msg)
+
+        if mt = "roSGScreenEvent" then
+            if msg.isScreenClosed() then
+                FSLogMain("ShowSaver: screen closed")
+                exit while
+            end if
+
+        else if mt = "roSGNodeEvent" then
+            if msg.GetNode() = saver and msg.GetField() = "close" then
+                if saver.close = true then
+                    FSLogMain("ShowSaver: saver requested close")
+                    exit while
+                end if
+            end if
         end if
     end while
-end sub
-
-' Roku calls main for legacy. Keep minimal.
-sub main(args as dynamic)
-    if args <> invalid then : end if ' suppress unused warning from compiler
-    RunUserInterface()
 end sub
