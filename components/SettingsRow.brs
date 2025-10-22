@@ -4,40 +4,37 @@ sub init()
   m.NAVY  = &hFF083554
   m.WHITE = &hFFFFFFFF
 
-  if m.bar <> invalid then
-    m.bar.color = m.NAVY
-    m.bar.visible = false
-  end if
-
-  if m.lbl <> invalid then
-    m.lbl.color = m.NAVY
-    m.lbl.blendColor = m.NAVY
-  end if
-
-  applyFocusVisuals(m.top.itemHasFocus)
-
+  if m.lbl <> invalid then m.lbl.color = m.NAVY
+  if m.bar <> invalid then m.bar.visible = false
   print "[FS][SettingsRow] init bar="; (m.bar <> invalid); " lbl="; (m.lbl <> invalid)
 end sub
 
 sub onContent()
-  content = m.top.itemContent
+  c = m.top.itemContent
   title = ""
-  if content <> invalid and content.DoesExist("title") then
-    title = content.title
+  if c <> invalid and c.DoesExist("title") then
+    title = c.title
   end if
 
   if m.lbl <> invalid then
     m.lbl.text = title
+    m.lbl.color = m.NAVY
   end if
 
-  applyFocusVisuals(m.top.itemHasFocus)
-
+  if m.bar <> invalid then m.bar.visible = m.top.itemHasFocus
   print "[FS][SettingsRow] onContent title='"; title; "'"
 end sub
 
 sub onFocus()
   hasFocus = m.top.itemHasFocus
-  applyFocusVisuals(hasFocus)
+  if m.bar <> invalid then m.bar.visible = hasFocus
+  if m.lbl <> invalid then
+    if hasFocus then
+      m.lbl.color = m.WHITE
+    else
+      m.lbl.color = m.NAVY
+    end if
+  end if
   if hasFocus then
     print "[FS][SettingsRow] onFocus focus=true"
   else
