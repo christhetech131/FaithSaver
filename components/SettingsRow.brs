@@ -1,48 +1,33 @@
-' components/SettingsRow.brs  (AARRGGBB colors + explicit visibility)
-
 sub init()
-  m.bar   = m.top.findNode("bar")
-  m.label = m.top.findNode("label")
-  m.check = m.top.findNode("check")
-
-  ' Force navy bar color (AARRGGBB = FF 10 3A 57)
-  m.bar.color = &hFF103A57
-
-  ' Ensure text will render
-  m.label.visible = true : m.label.opacity = 1.0
-  m.check.visible = true : m.check.opacity = 1.0
-
-  m.top.observeField("itemContent", "onContent")
-  m.top.observeField("focused",     "onFocusChange")
-  m.top.observeField("savedIndex",  "onSavedIndex")
+  m.bar = m.top.findNode("bar")
+  m.lbl = m.top.findNode("lbl")
+  m.NAVY  = &hFF083554
+  m.WHITE = &hFFFFFFFF
+  if m.lbl <> invalid then m.lbl.color = m.NAVY
+  if m.bar <> invalid then m.bar.visible = false
+  print "[FS][SettingsRow] init bar="; (m.bar <> invalid); " lbl="; (m.lbl <> invalid)
 end sub
 
 sub onContent()
   c = m.top.itemContent
-  if c = invalid then return
-  m.label.text = c.title
-  onFocusChange()
-  onSavedIndex()
-end sub
-
-sub onFocusChange()
-  f = m.top.focused
-  m.bar.visible = f
-
-  ' Focused row = white text; unfocused row = black text (AARRGGBB)
-  if f then
-    m.label.color = &hFFFFFFFF   ' white
+  if c <> invalid and c.DoesExist("title")
+    m.lbl.text = c.title
   else
-    m.label.color = &hFF000000   ' black
+    m.lbl.text = ""
   end if
-  m.check.color = &hFFFFFFFF
+  if m.lbl <> invalid then m.lbl.color = m.NAVY
+  if m.bar <> invalid then m.bar.visible = m.top.itemHasFocus
+  print "[FS][SettingsRow] onContent title='"; m.lbl.text; "'"
 end sub
 
-sub onSavedIndex()
-  isSaved = (m.top.itemIndex = m.top.savedIndex)
-  if isSaved then
-    m.check.text = "*"          ' ASCII-safe selected marker
+sub onFocus()
+  if m.top.itemHasFocus then
+    if m.bar <> invalid then m.bar.visible = true
+    if m.lbl <> invalid then m.lbl.color = m.WHITE
+    print "[FS][SettingsRow] onFocus focus=true"
   else
-    m.check.text = ""
+    if m.bar <> invalid then m.bar.visible = false
+    if m.lbl <> invalid then m.lbl.color = m.NAVY
+    print "[FS][SettingsRow] onFocus focus=false"
   end if
 end sub

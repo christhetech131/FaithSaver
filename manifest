@@ -1,23 +1,27 @@
 title=FaithSaver
+subtitle=Faith-based photo screensaver
 major_version=1
 minor_version=0
 build_version=0
 
-# This is a screensaver app
-is_screensaver=true
+' app tiles (must exist at these EXACT pkg paths)
+mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
+mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-540x405.jpg
 
-# UI resolutions supported
-ui_resolutions=hd,fhd
+' splash (Roku will scale as needed)
+splash_screen_fhd=pkg:/images/FaithSaver-Splash-h-1920x1080.jpg
+splash_screen_hd=pkg:/images/FaithSaver-Splash-h-1280x720.jpg
 
-# Splash images (baseline JPEGs). Use pkg:/ to avoid PHY errors.
-splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
-splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
+' optional brand/search art
+ui_brand_tile=pkg:/images/FaithSaver-Brand Tile-147x113.jpg
+search_button_logo=pkg:/images/FaithSaver-SearchButton-165x60.png
 
-# Brand tile used in “My screensavers”. Keep single canonical filename (opaque JPEG).
-mm_icon_focus_hd=pkg:/images/FaithSaver-BrandTile-147x113.jpg
-mm_icon_focus_fhd=pkg:/images/FaithSaver-BrandTile-147x113.jpg
+' render in FHD (1080p). Roku will downscale for HD models.
+ui_resolutions=fhd
 
-# Channel entry points
-run_screen_saver=RunScreenSaver
-run_screen_saver_preview=RunScreenSaverPreview
-run_screen_saver_settings=RunScreenSaverSettings
+' REQUIRED entry points
+run_screensaver=RunScreenSaver
+run_screensaver_settings=RunScreenSaverSettings
+
+' identify as a screensaver
+screensaver_title=FaithSaver

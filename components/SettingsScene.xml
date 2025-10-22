@@ -1,37 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SettingsScene" extends="Scene">
-    <interface>
-        <field id="closeRequested" type="boolean" value="false" />
-        <field id="currentCategory" type="string" value="scenery" />
-    </interface>
+  <interface>
+    <field id="closeRequested" type="boolean" value="false" />
+  </interface>
 
-    <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
+  <children>
+    <Poster
+      id="bg"
+      uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+      loadDisplayMode="scaleToFill"
+      width="1920"
+      height="1080"
+      translation="[0,0]" />
 
-    <children>
-        <!-- Background logo -->
-        <Poster
-            id="bg"
-            uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
-            width="1920" height="1080"
-            loadDisplayMode="scaleToFill"
-            translation="[0,0]" />
+    <Rectangle
+      id="scrim"
+      color="0x33000000"
+      width="1920"
+      height="1080"
+      translation="[0,0]" />
 
-        <!-- Header: current category -->
-        <Label
-            id="header"
-            translation="[60, 60]"
-            width="1800"
-            horizAlign="left"
-            text="Current category: (loading...)"
-            color="0xFFFFFFFF" />
+    <Label
+      id="header"
+      translation="[60,60]"
+      width="1800"
+      horizAlign="left"
+      color="0xFF083554"
+      text="Current: (loading)" />
 
-        <!-- Category list -->
-        <LabelList
-            id="list"
-            translation="[60, 140]"
-            itemSize="[1800, 60]"
-            numRows="12"
-            itemSpacing="8"
-            focusBitmapBlendColor="0xFF0B3754" />
-    </children>
+    <MarkupList
+      id="list"
+      translation="[60,140]"
+      itemComponentName="SettingsRow"
+      itemSize="[1800,60]"
+      itemSpacing="[0,8]" />
+  </children>
+
+  <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
 </component>

@@ -71,7 +71,7 @@ sub init()
 end sub
 
 ' Timer rotate callback
-sub onCycle()
+sub onCycle(event as object)
     ' TODO: when you wire the online/cache feed, choose nextUri from the shuffled list.
     nextUri = "pkg:/images/offline/" + m.category + ".jpg"
     FSLogSaver("rotate -> next: " + nextUri)

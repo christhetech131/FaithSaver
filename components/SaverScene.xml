@@ -1,34 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SaverScene" extends="Scene">
-    <interface>
-        <!-- Set by main.brs: "saver" or "preview" -->
-        <field id="mode" type="string" value="saver" />
-        <!-- Observed by main.brs to exit -->
-        <field id="close" type="boolean" value="false" />
-    </interface>
+  <interface>
+    <field id="mode" type="string" value="saver" />
+    <field id="isPreview" type="boolean" value="false" />
+    <field id="close" type="boolean" value="false" />
+    <!-- NEW: main watches this; SaverScene sets true when user presses ★ -->
+    <field id="requestSettings" type="boolean" value="false" />
+  </interface>
 
-    <!-- Wire the BrightScript for this component -->
-    <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
+  <children>
+    <!-- double-buffered Posters for clean swaps -->
+    <Poster id="bgA" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" />
+    <Poster id="bgB" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" visible="false" />
 
-    <children>
-        <!-- Double-buffered backgrounds -->
-        <Poster
-            id="bgA"
-            width="1920" height="1080"
-            translation="[0,0]"
-            loadDisplayMode="scaleToFill"
-            visible="true" />
-        <Poster
-            id="bgB"
-            width="1920" height="1080"
-            translation="[0,0]"
-            loadDisplayMode="scaleToFill"
-            visible="false" />
+    <!-- rotation timer (secs) -->
+    <Timer id="cycler" duration="180" repeat="true" control="stop" />
+  </children>
 
-        <!-- Rotation timer: started only in mode="saver" -->
-        <Timer id="cycler" duration="180.0" repeat="true" />
-
-        <!-- Optional feed task (no invalid fields like "type") -->
-        <Task id="feed" />
-    </children>
+  <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
 </component>
