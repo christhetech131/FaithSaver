@@ -21,7 +21,11 @@ sub onContent()
 
   if m.lbl <> invalid then
     m.lbl.text = title
-    m.lbl.color = m.NAVY
+    if m.top.itemHasFocus then
+      m.lbl.color = m.WHITE
+    else
+      m.lbl.color = m.NAVY
+    end if
   end if
 
   if m.bar <> invalid then m.bar.visible = m.top.itemHasFocus
