@@ -26,24 +26,27 @@ sub init()
     node.title = title
     content.appendChild(node)
   end for
+
   if m.list <> invalid then m.list.content = content
   print "[FS][SettingsScene] content assigned (count= "; m.categories.count(); ")"
 
-  stored = ReadCategory()
-  if stored = "" then stored = "Scenery"
-  idx = findIndexCI(m.categories, stored)
-  if m.categories.count() > 0 then
-    if idx < 0 or idx >= m.categories.count() then idx = 0
-    if m.list <> invalid then
-      m.list.jumpToItem = idx
-      m.list.setFocus(true)
-    end if
-    m.currentSelection = m.categories[idx]
+  storedLower = ReadCategory()
+  if storedLower = "" then storedLower = "scenery"
+  idx = findIndexCI(m.categories, storedLower)
+  if idx < 0 or idx >= m.categories.count() then idx = 0
+
+  if idx >= 0 and idx < m.categories.count() then
+    m.savedSelection = m.categories[idx]
   else
-    idx = -1
-    m.currentSelection = ""
+    m.savedSelection = capitalizeCategory(storedLower)
   end if
-  updateHeader(idx, m.currentSelection)
+
+  if m.list <> invalid then
+    m.list.jumpToItem = idx
+    m.list.setFocus(true)
+  end if
+
+  updateHeader(idx, m.savedSelection)
 
   if m.list <> invalid then m.list.ObserveField("itemFocused", "onListFocusChanged")
 end sub
@@ -69,7 +72,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if i >= 0 and i < m.categories.count() then
       sel = m.categories[i]
       SaveCategory(sel)
-      m.currentSelection = sel
+      m.savedSelection = sel
       updateHeader(i, sel)
     end if
     return true
@@ -80,22 +83,22 @@ end function
 
 ' ---- helpers ----
 function getSelectedCurrent() as string
-  if m.currentSelection <> invalid and Type(m.currentSelection) = "String" then
-    return m.currentSelection
+  if m.savedSelection <> invalid then
+    selType = Type(m.savedSelection)
+    if selType = "roString" or selType = "String" then return m.savedSelection
   end if
 
-  stored = ReadCategory()
-  if stored = "" then return ""
+  storedLower = ReadCategory()
+  if storedLower = "" then return ""
 
-  idx = findIndexCI(m.categories, stored)
+  idx = findIndexCI(m.categories, storedLower)
   if idx >= 0 and idx < m.categories.count() then
-    result = m.categories[idx]
-    m.currentSelection = result
-    return result
+    m.savedSelection = m.categories[idx]
+    return m.savedSelection
   end if
 
-  result = capitalizeCategory(stored)
-  if result <> "" then m.currentSelection = result
+  result = capitalizeCategory(storedLower)
+  if result <> "" then m.savedSelection = result
   return result
 end function
 
@@ -128,7 +131,7 @@ sub updateHeader(focusedIdx as integer, selectedVal as string)
 
   if m.header <> invalid then
     m.header.text = "Current: " + display
-    print "[FS][SettingsScene] header='"; m.header.text; "'"
+    print "[FS][SettingsScene] header='"; m.header.text; "' (focusedIdx="; focusedIdx; ")"
   else
     print "[FS][SettingsScene] header update skipped (header invalid)"
   end if
