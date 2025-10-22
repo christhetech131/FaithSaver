@@ -15,7 +15,7 @@
 
     <Rectangle
       id="scrim"
-      color="0x33000000"
+      color="0x40000000"
       width="1920"
       height="1080"
       translation="[0,0]" />
