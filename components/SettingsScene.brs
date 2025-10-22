@@ -16,8 +16,8 @@ sub init()
   end if
 
   m.categories = [
-    "Scenery","Space","Spring","Summer","Textures",
-    "Winter","Seasonal","Animals","Fall","Geology"
+    "Scenery", "Space", "Spring", "Summer", "Textures",
+    "Winter", "Seasonal", "Animals", "Fall", "Geology"
   ]
 
   content = CreateObject("roSGNode", "ContentNode")
@@ -27,15 +27,23 @@ sub init()
     content.appendChild(node)
   end for
   if m.list <> invalid then m.list.content = content
-  print "[FS][SettingsScene] content assigned (count="; m.categories.count(); ")"
+  print "[FS][SettingsScene] content assigned (count= "; m.categories.count(); ")"
 
   stored = ReadCategory()
   if stored = "" then stored = "Scenery"
   idx = findIndexCI(m.categories, stored)
-  if idx < 0 then idx = 0
-
-  if m.list <> invalid then m.list.jumpToItem = idx
-  updateHeader(idx, m.categories[idx])
+  if m.categories.count() > 0 then
+    if idx < 0 or idx >= m.categories.count() then idx = 0
+    if m.list <> invalid then
+      m.list.jumpToItem = idx
+      m.list.setFocus(true)
+    end if
+    m.currentSelection = m.categories[idx]
+  else
+    idx = -1
+    m.currentSelection = ""
+  end if
+  updateHeader(idx, m.currentSelection)
 
   if m.list <> invalid then m.list.ObserveField("itemFocused", "onListFocusChanged")
 end sub
@@ -58,37 +66,37 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if m.list = invalid then return false
     i = m.list.itemFocused
     if i < 0 then i = 0
-    sel = m.categories[i]
-    SaveCategory(sel)
-    updateHeader(i, sel)
+    if i >= 0 and i < m.categories.count() then
+      sel = m.categories[i]
+      SaveCategory(sel)
+      m.currentSelection = sel
+      updateHeader(i, sel)
+    end if
     return true
   end if
 
   return false
 end function
 
-sub commitSelection(idx as integer)
-  if m.categories = invalid then return
-  if idx < 0 or idx >= m.categories.count() then return
-
-  selectedName = m.categories[idx]
-  SaveCategory(selectedName)
-  m.savedIndex = idx
-  m.savedValue = selectedName
-  updateHeader(idx, selectedName)
-end sub
-
 ' ---- helpers ----
 function getSelectedCurrent() as string
-  if m.categories = invalid then return ""
-  v = ReadCategory()
-  if v = "" then
-    if m.categories.count() > 0 then return m.categories[0]
-    return ""
+  if m.currentSelection <> invalid and Type(m.currentSelection) = "String" then
+    return m.currentSelection
   end if
-  i = findIndexCI(m.categories, v)
-  if i >= 0 then return m.categories[i]
-  return v
+
+  stored = ReadCategory()
+  if stored = "" then return ""
+
+  idx = findIndexCI(m.categories, stored)
+  if idx >= 0 and idx < m.categories.count() then
+    result = m.categories[idx]
+    m.currentSelection = result
+    return result
+  end if
+
+  result = capitalizeCategory(stored)
+  if result <> "" then m.currentSelection = result
+  return result
 end function
 
 function findIndexCI(arr as object, val as string) as integer
@@ -100,13 +108,26 @@ function findIndexCI(arr as object, val as string) as integer
   return -1
 end function
 
+function capitalizeCategory(value as string) as string
+  if value = invalid then return ""
+  if value = "" then return ""
+
+  lowerValue = lcase(value)
+  firstChar = left(lowerValue, 1)
+  rest = ""
+  if Len(lowerValue) > 1 then rest = mid(lowerValue, 1)
+
+  return ucase(firstChar) + rest
+end function
+
 sub updateHeader(focusedIdx as integer, selectedVal as string)
-  curr = "(none)"
+  display = "(none)"
   if selectedVal <> "" then
-    curr = selectedVal
+    display = selectedVal
   end if
-  if m.header <> invalid then m.header.text = "Current: " + curr
+
   if m.header <> invalid then
+    m.header.text = "Current: " + display
     print "[FS][SettingsScene] header='"; m.header.text; "'"
   else
     print "[FS][SettingsScene] header update skipped (header invalid)"
@@ -118,7 +139,7 @@ function ReadCategory() as string
   if sec = invalid then return ""
   v = sec.Read("category")
   if v = invalid then return ""
-  return v
+  return lcase(v)
 end function
 
 sub SaveCategory(cat as string)
@@ -126,8 +147,10 @@ sub SaveCategory(cat as string)
   sec = CreateObject("roRegistrySection", "FaithSaver")
   if sec <> invalid then
     sec.Write("category", lc)
-    sec.Flush()
-    print "[FS][SettingsScene][REG] write 'category'="; lc; " flush=true"
+    flushed = sec.Flush()
+    flushText = "false"
+    if flushed then flushText = "true"
+    print "[FS][SettingsScene][REG] write 'category'="; lc; " flush="; flushText
   else
     print "[FS][SettingsScene][REG] write 'category'="; lc; " flush=false (section invalid)"
   end if
