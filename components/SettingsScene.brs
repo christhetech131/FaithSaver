@@ -5,46 +5,62 @@ sub init()
   m.header = m.top.findNode("header")
   m.list   = m.top.findNode("list")
 
-  ' Ensure spacing & use our own focus visuals (disable Roku pink)
+  print "[FS][SettingsScene] init: bg="; (m.bg <> invalid); ", scrim="; (m.scrim <> invalid); ", header="; (m.header <> invalid); ", list="; (m.list <> invalid)
+
   if m.list <> invalid then
     m.list.itemSpacing = [0, 8]
     m.list.AddReplace("drawFocusFeedback", false)
     m.list.focusable = true
     m.list.setFocus(true)
+    print "[FS][SettingsScene] list.itemSpacing="; m.list.itemSpacing; ", drawFocusFeedback="; m.list.drawFocusFeedback
   end if
-  print "[FS][SettingsScene] list.itemSpacing="; m.list.itemSpacing; ", drawFocusFeedback="; getFieldSafe(m.list, "drawFocusFeedback")
 
-  ' Display strings (capitalized)
-  m.categories = [ "Scenery","Space","Spring","Summer","Textures","Winter","Seasonal","Animals","Fall","Geology" ]
+  m.categories = [
+    "Scenery","Space","Spring","Summer","Textures",
+    "Winter","Seasonal","Animals","Fall","Geology"
+  ]
 
   content = CreateObject("roSGNode", "ContentNode")
-  for each t in m.categories
-    n = CreateObject("roSGNode", "ContentNode")
-    n.title = t
-    content.appendChild(n)
+  for each title in m.categories
+    node = CreateObject("roSGNode", "ContentNode")
+    node.title = title
+    content.appendChild(node)
   end for
-  m.list.content = content
-  print "[FS][SettingsScene] content assigned (count= "; m.categories.count(); ")"
 
-  ' Restore selection
-  cur = ReadCategory()
-  if cur = "" then cur = "Scenery"
-  idx = findIndexCI(m.categories, cur)
-  if idx < 0 then idx = 0
-  m.list.jumpToItem = idx
+  if m.list <> invalid then m.list.content = content
+  print "[FS][SettingsScene] content assigned (count="; m.categories.count(); ")"
 
-  updateHeader(idx, m.categories[idx])
+  storedLower = ReadCategory()
+  if storedLower = "" then storedLower = "scenery"
 
-  ' React to focus change
-  m.list.ObserveField("itemFocused", "onListFocusChanged")
+  storedIndex = findIndexCI(m.categories, storedLower)
+  if storedIndex < 0 then storedIndex = 0
 
-  print "[FS][SettingsScene] init done; selected="; m.categories[idx]; " startIdx="; idx
+  m.savedIndex = storedIndex
+  m.savedValue = m.categories[storedIndex]
+
+  if m.list <> invalid then
+    m.list.jumpToItem = storedIndex
+    m.list.ObserveField("itemFocused", "onListFocusChanged")
+    m.list.ObserveField("itemSelected", "onListItemSelected")
+  end if
+
+  updateHeader(storedIndex, m.savedValue)
 end sub
 
 sub onListFocusChanged()
-  i = m.list.itemFocused
-  if i < 0 then return
-  updateHeader(i, getSelectedCurrent())
+  if m.list = invalid then return
+  focusedIndex = m.list.itemFocused
+  print "[FS][SettingsScene] itemFocused -> "; focusedIndex
+  if focusedIndex < 0 then return
+  updateHeader(focusedIndex, getSelectedCurrent())
+end sub
+
+sub onListItemSelected()
+  if m.list = invalid then return
+  selectedIndex = m.list.itemSelected
+  print "[FS][SettingsScene] itemSelected -> "; selectedIndex
+  commitSelection(selectedIndex)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
@@ -54,56 +70,71 @@ function onKeyEvent(key as string, press as boolean) as boolean
     m.top.closeRequested = true
     return true
   else if key = "ok" then
-    i = m.list.itemFocused : if i < 0 then i = 0
-    sel = m.categories[i]
-    SaveCategory(sel)
-    print "[FS][SettingsScene][REG] write 'category'="; lcase(sel); " flush=true"
-    updateHeader(i, sel)
-    print "[FS][SettingsScene] saved selection="; lcase(sel); " (idx="; i; ")"
+    if m.list = invalid then return false
+    focusedIndex = m.list.itemFocused
+    print "[FS][SettingsScene] onKeyEvent ok (focusedIndex="; focusedIndex; ")"
+    commitSelection(focusedIndex)
     return true
   end if
 
   return false
 end function
 
+sub commitSelection(idx as integer)
+  if m.categories = invalid then return
+  if idx < 0 or idx >= m.categories.count() then return
+
+  selectedName = m.categories[idx]
+  SaveCategory(selectedName)
+  m.savedIndex = idx
+  m.savedValue = selectedName
+  updateHeader(idx, selectedName)
+end sub
+
 ' ---- helpers ----
 function getSelectedCurrent() as string
-  v = ReadCategory()
-  if v = "" then return ""
-  i = findIndexCI(m.categories, v)
-  if i >= 0 then return m.categories[i]
-  return v
+  if m.savedValue <> invalid then return m.savedValue
+  return ""
 end function
 
 function findIndexCI(arr as object, val as string) as integer
-  lv = lcase(val)
-  for i = 0 to arr.count()-1
-    if lcase(arr[i]) = lv then return i
+  if arr = invalid then return -1
+  lookup = lcase(val)
+  for i = 0 to arr.count() - 1
+    if lcase(arr[i]) = lookup then return i
   end for
   return -1
 end function
 
 sub updateHeader(focusedIdx as integer, selectedVal as string)
-  curr = "(none)"
-  if selectedVal <> "" then curr = selectedVal
-  if m.header <> invalid then m.header.text = "Current: " + curr
-  print "[FS][SettingsScene] header='"; m.header.text; "'"
+  displayValue = "(none)"
+  if selectedVal <> "" then
+    displayValue = selectedVal
+  end if
+  if m.header <> invalid then
+    m.header.text = "Current: " + displayValue
+    print "[FS][SettingsScene] header='"; m.header.text; "' (focusedIdx="; focusedIdx; ")"
+  else
+    print "[FS][SettingsScene] header update skipped (header invalid)"
+  end if
 end sub
 
 function ReadCategory() as string
-  sec = CreateObject("roRegistrySection", "FaithSaver")
-  if sec = invalid then return ""
-  v = sec.Read("category") : if v = invalid then return ""
-  return v
+  section = CreateObject("roRegistrySection", "FaithSaver")
+  if section = invalid then return ""
+  value = section.Read("category")
+  if value = invalid then return ""
+  return value
 end function
 
 sub SaveCategory(cat as string)
-  sec = CreateObject("roRegistrySection", "FaithSaver")
-  sec.Write("category", lcase(cat))
-  sec.Flush()
+  lower = lcase(cat)
+  section = CreateObject("roRegistrySection", "FaithSaver")
+  if section <> invalid then
+    section.Write("category", lower)
+    section.Flush()
+    print "[FS][SettingsScene][REG] write 'category'="; lower; " flush=true"
+  else
+    print "[FS][SettingsScene][REG] write 'category'="; lower; " flush=false (section invalid)"
+  end if
 end sub
-
-function getFieldSafe(n as object, f as string) as dynamic
-  if n <> invalid and n.DoesExist(f) then return n[f]
-  return invalid
-end function

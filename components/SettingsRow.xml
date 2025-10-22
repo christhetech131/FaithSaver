@@ -1,18 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SettingsRow" extends="Group">
   <interface>
-    <field id="itemContent"  type="node"    onChange="onContent" />
-    <field id="itemHasFocus" type="boolean" onChange="onFocus"   />
+    <field id="itemContent" type="node" onChange="onContent" />
+    <field id="itemHasFocus" type="boolean" onChange="onFocus" />
   </interface>
 
   <children>
-    <Rectangle id="bar" width="1800" height="60" color="0xFF083554" visible="false" />
-    <Label id="lbl"
-           translation="[20,0]"
-           width="1760" height="60"
-           horizAlign="left" vertAlign="center"
-           color="0xFF083554"
-           text="" />
+    <Rectangle
+      id="bar"
+      width="1800"
+      height="60"
+      color="0xFF083554"
+      visible="false" />
+
+    <Label
+      id="lbl"
+      width="1760"
+      height="60"
+      translation="[20,0]"
+      horizAlign="left"
+      vertAlign="center"
+      color="0xFF083554" />
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/SettingsRow.brs" />
