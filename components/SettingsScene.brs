@@ -32,8 +32,9 @@ sub init()
 
   storedLower = ReadCategory()
   if storedLower = "" then storedLower = "scenery"
+
   idx = findIndexCI(m.categories, storedLower)
-  if idx < 0 or idx >= m.categories.count() then idx = 0
+  if idx < 0 then idx = 0
 
   if idx >= 0 and idx < m.categories.count() then
     m.savedSelection = m.categories[idx]
@@ -56,6 +57,7 @@ sub onListFocusChanged()
   i = m.list.itemFocused
   print "[FS][SettingsScene] itemFocused -> "; i
   if i < 0 then return
+
   updateHeader(i, getSelectedCurrent())
 end sub
 
@@ -84,8 +86,7 @@ end function
 ' ---- helpers ----
 function getSelectedCurrent() as string
   if m.savedSelection <> invalid then
-    selType = Type(m.savedSelection)
-    if selType = "roString" or selType = "String" then return m.savedSelection
+    if m.savedSelection <> "" then return m.savedSelection
   end if
 
   storedLower = ReadCategory()
@@ -131,9 +132,9 @@ sub updateHeader(focusedIdx as integer, selectedVal as string)
 
   if m.header <> invalid then
     m.header.text = "Current: " + display
-    print "[FS][SettingsScene] header='"; m.header.text; "' (focusedIdx="; focusedIdx; ")"
+    print "[FS][SettingsScene] header='"; m.header.text; "' focusIdx="; focusedIdx
   else
-    print "[FS][SettingsScene] header update skipped (header invalid)"
+    print "[FS][SettingsScene] header skipped (header invalid) focusIdx="; focusedIdx
   end if
 end sub
 
@@ -154,7 +155,5 @@ sub SaveCategory(cat as string)
     flushText = "false"
     if flushed then flushText = "true"
     print "[FS][SettingsScene][REG] write 'category'="; lc; " flush="; flushText
-  else
-    print "[FS][SettingsScene][REG] write 'category'="; lc; " flush=false (section invalid)"
   end if
 end sub
