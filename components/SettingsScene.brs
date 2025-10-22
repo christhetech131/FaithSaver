@@ -21,10 +21,10 @@ sub init()
   ]
 
   content = CreateObject("roSGNode", "ContentNode")
-  for each t in m.categories
-    n = CreateObject("roSGNode", "ContentNode")
-    n.title = t
-    content.appendChild(n)
+  for each title in m.categories
+    node = CreateObject("roSGNode", "ContentNode")
+    node.title = title
+    content.appendChild(node)
   end for
   if m.list <> invalid then m.list.content = content
   print "[FS][SettingsScene] content assigned (count="; m.categories.count(); ")"
@@ -66,6 +66,17 @@ function onKeyEvent(key as string, press as boolean) as boolean
 
   return false
 end function
+
+sub commitSelection(idx as integer)
+  if m.categories = invalid then return
+  if idx < 0 or idx >= m.categories.count() then return
+
+  selectedName = m.categories[idx]
+  SaveCategory(selectedName)
+  m.savedIndex = idx
+  m.savedValue = selectedName
+  updateHeader(idx, selectedName)
+end sub
 
 ' ---- helpers ----
 function getSelectedCurrent() as string

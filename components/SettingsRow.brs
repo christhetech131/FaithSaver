@@ -41,3 +41,20 @@ sub onFocus()
     print "[FS][SettingsRow] onFocus focus=false"
   end if
 end sub
+
+sub applyFocusVisuals(hasFocus as boolean)
+  if m.bar <> invalid then
+    m.bar.visible = hasFocus
+    m.bar.color = m.NAVY
+  end if
+
+  if m.lbl <> invalid then
+    if hasFocus then
+      m.lbl.color = m.WHITE
+      m.lbl.blendColor = m.WHITE
+    else
+      m.lbl.color = m.NAVY
+      m.lbl.blendColor = m.NAVY
+    end if
+  end if
+end sub
