@@ -1,39 +1,23 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <component name="SettingsScene" extends="Scene">
   <interface>
-    <field id="closeRequested" type="boolean" value="false" />
+    <field id="close" type="boolean" alwaysNotify="true" />
   </interface>
 
   <children>
-    <Poster
-      id="bg"
-      uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
-      loadDisplayMode="scaleToFill"
-      width="1920"
-      height="1080"
-      translation="[0,0]" />
+    <!-- Background image -->
+    <Poster id="bg"
+            uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+            width="1920" height="1080"
+            loadDisplayMode="scaleToFill" />
 
-    <Rectangle
-      id="scrim"
-      color="0x40000000"
-      width="1920"
-      height="1080"
-      translation="[0,0]" />
+    <!-- Subtle overlay for contrast -->
+    <Rectangle width="1920" height="1080" color="0xFFFFFF40" />
 
-    <Label
-      id="header"
-      translation="[60,60]"
-      width="1800"
-      horizAlign="left"
-      color="0xFF083554"
-      text="Current: (none)" />
-
-    <MarkupList
-      id="list"
-      translation="[60,140]"
-      itemComponentName="SettingsRow"
-      itemSize="[1800,60]"
-      itemSpacing="[0,8]" />
+    <!-- Title and hint (RGBA black) -->
+    <Label id="title" translation="[120,80]"  color="0x000000FF" text="FaithSaver Settings" />
+    <Group id="menu" translation="[120,160]" />
+    <Label id="hint"  translation="[120,980]" color="0x000000FF"
+           text="Up/Down: Move   OK: Save   Back: Exit" />
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />

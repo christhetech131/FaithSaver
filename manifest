@@ -9,11 +9,11 @@ mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
 mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-540x405.jpg
 
 ' splash (Roku will scale as needed)
-splash_screen_fhd=pkg:/images/FaithSaver-Splash-h-1920x1080.jpg
-splash_screen_hd=pkg:/images/FaithSaver-Splash-h-1280x720.jpg
+splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
+splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
 
 ' optional brand/search art
-ui_brand_tile=pkg:/images/FaithSaver-Brand Tile-147x113.jpg
+ui_brand_tile=pkg:/images/FaithSaver-BrandTile-147x113.jpg
 search_button_logo=pkg:/images/FaithSaver-SearchButton-165x60.png
 
 ' render in FHD (1080p). Roku will downscale for HD models.

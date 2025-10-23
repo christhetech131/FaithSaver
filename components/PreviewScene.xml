@@ -5,29 +5,39 @@
   </interface>
 
   <children>
-    <!-- background poster so preview doesn't look blank -->
+    <!-- Background so preview doesn't look blank -->
     <Poster id="bg"
-            uri="pkg:/images/FaithSaver-Splash-h-1920x1080.jpg"
+            uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg"
             width="1920" height="1080"
             loadDisplayMode="scaleToFill"
             translation="[0,0]" />
 
-    <Label id="title"
-           translation="[60, 60]"
-           width="1800"
-           text="FaithSaver Preview (offline images)"
-           color="0xFFFFFFFF" />
-
-    <Label id="hint"
-           translation="[60, 120]"
-           width="1800"
-           text="UP/DOWN to change image • BACK/HOME to exit"
-           color="0xFFAAAAAA" />
-
+    <!-- The preview image itself -->
     <Poster id="img"
             width="1920" height="1080"
             loadDisplayMode="scaleToFill"
             translation="[0,0]" />
+
+    <!-- Semi-transparent black bar for text readability (RGBA) -->
+    <Rectangle id="overlay"
+               translation="[0, 960]"
+               width="1920"
+               height="120"
+               color="0x00000080" />
+
+    <!-- Title -->
+    <Label id="title"
+           translation="[60, 40]"
+           width="1800"
+           text="Preview"
+           color="0x000000FF" />
+
+    <!-- Always-visible hint -->
+    <Label id="hint"
+           translation="[60, 980]"
+           width="1800"
+           text="Press UP/DOWN to cycle • BACK to exit"
+           color="0xFFFFFFFF" />
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/PreviewScene.brs" />

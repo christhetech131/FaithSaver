@@ -1,160 +1,181 @@
-' ===== SettingsScene controller =====
+' SettingsScene — plain labels + custom highlight (RGBA colors). No roFileSystem.
+
 sub init()
-  m.bg     = m.top.findNode("bg")
-  m.scrim  = m.top.findNode("scrim")
-  m.header = m.top.findNode("header")
-  m.list   = m.top.findNode("list")
+    m.bg    = m.top.findNode("bg")
+    m.menu  = m.top.findNode("menu")
+    m.title = m.top.findNode("title")
 
-  print "[FS][SettingsScene] init: bg="; (m.bg <> invalid); ", scrim="; (m.scrim <> invalid); ", header="; (m.header <> invalid); ", list="; (m.list <> invalid)
+    ' Ensure the Roku Settings host exits on Back when embedded
+    m.top.backExitsScene = true
 
-  if m.list <> invalid then
-    m.list.itemSpacing = [0, 8]
-    m.list.AddReplace("drawFocusFeedback", false)
-    m.list.focusable = true
-    m.list.setFocus(true)
-    print "[FS][SettingsScene] list.itemSpacing="; m.list.itemSpacing; ", drawFocusFeedback="; m.list.drawFocusFeedback
-  end if
+    ' RGBA colors (0xRRGGBBAA)
+    m.colorNavy  = &h103A57FF   ' navy #103A57, fully opaque
+    m.colorWhite = &hFFFFFFFF   ' white
+    m.colorBlack = &h000000FF   ' black
 
-  m.categories = [
-    "Scenery", "Space", "Spring", "Summer", "Textures",
-    "Winter", "Seasonal", "Animals", "Fall", "Geology"
-  ]
+    ' Layout
+    m.rowH  = 72
+    m.rowW  = 1680
+    m.textX = 16
 
-  content = CreateObject("roSGNode", "ContentNode")
-  for each title in m.categories
-    node = CreateObject("roSGNode", "ContentNode")
-    node.title = title
-    content.appendChild(node)
-  end for
+    print "SettingsScene.init"
 
-  if m.list <> invalid then m.list.content = content
-  print "[FS][SettingsScene] content assigned (count= "; m.categories.count(); ")"
+    BuildOptions()
 
-  storedLower = ReadCategory()
-  if storedLower = "" then storedLower = "scenery"
-  idx = findIndexCI(m.categories, storedLower)
-  if idx < 0 or idx >= m.categories.count() then idx = 0
+    ' Load saved category; default to animals
+    reg = CreateObject("roRegistrySection","FaithSaver")
+    saved = reg.Read("category")
+    if saved = invalid then saved = ""
+    m.savedKey = LCase(saved)
+    if m.savedKey = "" then m.savedKey = "animals"
+    print "Saved key: "; m.savedKey
 
-  if idx >= 0 and idx < m.categories.count() then
-    m.savedSelection = m.categories[idx]
-  else
-    m.savedSelection = capitalizeCategory(storedLower)
-  end if
+    ' Resolve saved index
+    m.selected = 0
+    i = 0
+    while i < m.keys.count()
+        if LCase(m.keys[i]) = m.savedKey then
+            m.selected = i
+            exit while
+        end if
+        i = i + 1
+    end while
 
-  if m.list <> invalid then
-    m.list.jumpToItem = idx
-    m.list.setFocus(true)
-  end if
+    ' Start focus on saved
+    m.focus = m.selected
+    print "Initial focus index: "; m.focus
 
-  updateHeader(idx, m.savedSelection)
+    BuildRows()
+    Paint()
 
-  if m.list <> invalid then m.list.ObserveField("itemFocused", "onListFocusChanged")
+    m.top.setFocus(true)
 end sub
 
-sub onListFocusChanged()
-  if m.list = invalid then return
-  i = m.list.itemFocused
-  print "[FS][SettingsScene] itemFocused -> "; i
-  if i < 0 then return
-  updateHeader(i, getSelectedCurrent())
+sub BuildOptions()
+    ' Titles
+    m.titles = CreateObject("roArray", 10, true)
+    season = CurrentSeasonName()
+    m.titles.push("Seasonal (auto - " + season + ")")
+    m.titles.push("Animals")
+    m.titles.push("Fall")
+    m.titles.push("Geology")
+    m.titles.push("Scenery")
+    m.titles.push("Space")
+    m.titles.push("Spring")
+    m.titles.push("Summer")
+    m.titles.push("Textures")
+    m.titles.push("Winter")
+
+    ' Keys (parallel)
+    m.keys = CreateObject("roArray", 10, true)
+    m.keys.push("seasonal")
+    m.keys.push("animals")
+    m.keys.push("fall")
+    m.keys.push("geology")
+    m.keys.push("scenery")
+    m.keys.push("space")
+    m.keys.push("spring")
+    m.keys.push("summer")
+    m.keys.push("textures")
+    m.keys.push("winter")
 end sub
 
-function onKeyEvent(key as string, press as boolean) as boolean
-  if not press then return false
+function CurrentSeasonName() as String
+    dt = CreateObject("roDateTime")
+    mth = dt.GetMonth()
+    if mth = 3 or mth = 4 or mth = 5 then return "spring"
+    if mth = 6 or mth = 7 or mth = 8 then return "summer"
+    if mth = 9 or mth = 10 or mth = 11 then return "fall"
+    return "winter"
+end function
 
-  if key = "back" or key = "home" then
-    m.top.closeRequested = true
-    return true
-  else if key = "ok" then
-    if m.list = invalid then return false
-    i = m.list.itemFocused
-    if i < 0 then i = 0
-    if i >= 0 and i < m.categories.count() then
-      sel = m.categories[i]
-      SaveCategory(sel)
-      m.savedSelection = sel
-      updateHeader(i, sel)
+sub BuildRows()
+    ' Clear menu children
+    kids = m.menu.getChildren(-1, 0)
+    if kids <> invalid then
+        for each k in kids
+            if k <> invalid then m.menu.removeChild(k)
+        end for
     end if
-    return true
-  end if
 
-  return false
-end function
+    ' Highlight bar behind focused row
+    m.hl = CreateObject("roSGNode","Rectangle")
+    m.hl.width  = m.rowW
+    m.hl.height = m.rowH - 8
+    m.hl.opacity = 1.0
+    m.hl.color  = m.colorNavy
+    m.hl.translation = [0, 0]
+    m.menu.appendChild(m.hl)
 
-' ---- helpers ----
-function getSelectedCurrent() as string
-  if m.savedSelection <> invalid then
-    selType = Type(m.savedSelection)
-    if selType = "roString" or selType = "String" then return m.savedSelection
-  end if
-
-  storedLower = ReadCategory()
-  if storedLower = "" then return ""
-
-  idx = findIndexCI(m.categories, storedLower)
-  if idx >= 0 and idx < m.categories.count() then
-    m.savedSelection = m.categories[idx]
-    return m.savedSelection
-  end if
-
-  result = capitalizeCategory(storedLower)
-  if result <> "" then m.savedSelection = result
-  return result
-end function
-
-function findIndexCI(arr as object, val as string) as integer
-  if arr = invalid then return -1
-  lv = lcase(val)
-  for i = 0 to arr.count() - 1
-    if lcase(arr[i]) = lv then return i
-  end for
-  return -1
-end function
-
-function capitalizeCategory(value as string) as string
-  if value = invalid then return ""
-  if value = "" then return ""
-
-  lowerValue = lcase(value)
-  firstChar = left(lowerValue, 1)
-  rest = ""
-  if Len(lowerValue) > 1 then rest = mid(lowerValue, 1)
-
-  return ucase(firstChar) + rest
-end function
-
-sub updateHeader(focusedIdx as integer, selectedVal as string)
-  display = "(none)"
-  if selectedVal <> "" then
-    display = selectedVal
-  end if
-
-  if m.header <> invalid then
-    m.header.text = "Current: " + display
-    print "[FS][SettingsScene] header='"; m.header.text; "' (focusedIdx="; focusedIdx; ")"
-  else
-    print "[FS][SettingsScene] header update skipped (header invalid)"
-  end if
+    ' Labels for each row
+    m.labels = CreateObject("roArray", m.titles.count(), true)
+    y = 0
+    i = 0
+    while i < m.titles.count()
+        lbl = CreateObject("roSGNode","Label")
+        lbl.translation = [m.textX, y]
+        lbl.opacity = 1.0
+        lbl.text  = m.titles[i]
+        lbl.color = m.colorBlack        ' unfocused default = black
+        m.menu.appendChild(lbl)
+        m.labels.push(lbl)
+        y = y + m.rowH
+        i = i + 1
+    end while
 end sub
 
-function ReadCategory() as string
-  sec = CreateObject("roRegistrySection", "FaithSaver")
-  if sec = invalid then return ""
-  v = sec.Read("category")
-  if v = invalid then return ""
-  return lcase(v)
-end function
+sub Paint()
+    ' Position highlight and force colors (every repaint)
+    newY = m.focus * m.rowH
+    m.hl.translation = [0, newY]
+    m.hl.color = m.colorNavy
+    m.hl.opacity = 1.0
 
-sub SaveCategory(cat as string)
-  lc = lcase(cat)
-  sec = CreateObject("roRegistrySection", "FaithSaver")
-  if sec <> invalid then
-    sec.Write("category", lc)
-    flushed = sec.Flush()
-    flushText = "false"
-    if flushed then flushText = "true"
-    print "[FS][SettingsScene][REG] write 'category'="; lc; " flush="; flushText
-  else
-    print "[FS][SettingsScene][REG] write 'category'="; lc; " flush=false (section invalid)"
-  end if
+    i = 0
+    while i < m.labels.count()
+        if i = m.focus then
+            m.labels[i].color = m.colorWhite    ' focused
+        else
+            m.labels[i].color = m.colorBlack    ' unfocused
+        end if
+        m.labels[i].opacity = 1.0
+        i = i + 1
+    end while
+
+    m.title.color = m.colorBlack
+    m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
 end sub
+
+function onKeyEvent(key as String, press as Boolean) as Boolean
+    if not press then return false
+
+    if key = "up" then
+        if m.focus > 0 then
+            m.focus = m.focus - 1
+            Paint()
+        end if
+        return true
+
+    else if key = "down" then
+        if m.focus < m.titles.count() - 1 then
+            m.focus = m.focus + 1
+            Paint()
+        end if
+        return true
+
+    else if key = "OK" then
+        m.selected = m.focus
+        reg = CreateObject("roRegistrySection","FaithSaver")
+        reg.Write("category", LCase(m.keys[m.selected]))
+        reg.Flush()
+        print "Saved selection: "; m.keys[m.selected]
+        Paint()
+        return true
+
+    else if key = "back" then
+        ' Do not consume Back so the host/scene can exit automatically.
+        return false
+    end if
+
+    return false
+end function
