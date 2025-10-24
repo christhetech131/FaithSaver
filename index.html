@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FaithSaver — Submit Your Photos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Submit finished verse images or raw photos for FaithSaver. Read the guidelines, pick the right upload link, and help share faith-inspired visuals.">
+  <meta property="og:title" content="FaithSaver — Submit Your Photos">
+  <meta property="og:description" content="Upload finished verse images or raw photos for FaithSaver.">
+  <meta property="og:type" content="website">
+  <style>
+    :root{
+      --bg: #0b1117;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #103A57;
+      --accent-2: #1f6aa6;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --error: #dc2626;
+      --border: #223041;
+      --chip: #0f172a;
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f6f7fb; --panel:#ffffff; --text:#111827; --muted:#6b7280;
+        --accent:#103A57; --accent-2:#1f6aa6; --border:#e5e7eb; --chip:#f3f4f6;
+      }
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;
+      background:linear-gradient(180deg,var(--bg),#0c1420 40%,var(--bg));
+      color:var(--text);
+    }
+    .wrap{max-width:960px;margin:0 auto;padding:32px 16px 64px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+    .logo{
+      width:44px;height:44px;border-radius:10px;display:block;object-fit:cover;
+    }
+    h1{margin:0;font-size:28px}
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,.2)
+    }
+    .grid{display:grid;gap:16px}
+    @media (min-width:900px){.grid{grid-template-columns:1.15fr .85fr}}
+    h2{margin:0 0 10px 0;font-size:20px}
+    p{margin:8px 0}
+    .btns{display:grid;gap:12px;margin-top:14px}
+    .btn{
+      display:flex;align-items:center;justify-content:center;
+      gap:10px;padding:14px 16px;border-radius:12px;text-decoration:none;
+      color:#fff;background:var(--accent);border:1px solid #0f2a3f; font-weight:600;
+      transition:transform .04s ease, box-shadow .2s ease, background .2s ease
+    }
+    .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(16,58,87,.35)}
+    .btn:active{transform:translateY(0)}
+    .btn.secondary{background:#374151;border-color:#2a3342}
+    .pill{
+      display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;
+      background:var(--chip);border:1px solid var(--border);color:var(--muted)
+    }
+    ul,ol{margin:8px 0 8px 22px}
+    .cards{display:grid;gap:12px;margin-top:10px}
+    .card{
+      background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px
+    }
+    .two-col{display:grid;gap:10px}
+    @media (min-width:700px){.two-col{grid-template-columns:1fr 1fr}}
+    code,kbd{background:var(--chip);border:1px solid var(--border);padding:2px 6px;border-radius:6px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    footer{margin-top:22px;color:var(--muted);font-size:13px;text-align:center}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--error)}
+    .sep{height:1px;background:var(--border);margin:18px 0}
+    .kbd{font-size:12px}
+    .category-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img class="logo" src="images/FaithSaver-BrandTile-147x113.jpg" alt="FaithSaver logo" width="44" height="44">
+      <div>
+        <h1>FaithSaver — Submit Your Photos</h1>
+        <div class="pill">Two paths: Finished (with verse) or Raw (no verse yet)</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Choose one upload path</h2>
+        <div class="two-col">
+          <div class="card">
+            <h3>Finished image <span class="ok">✓</span></h3>
+            <p>Verse is already composited on the photo. Ready for curation and publishing.</p>
+            <div class="btns">
+              <a class="btn" href="https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA" target="_blank" rel="noopener">
+                Submit Finished Image
+              </a>
+            </div>
+            <div class="sep"></div>
+            <p><strong>Optional filename hint:</strong></p>
+            <p><code>category__short-title__attribution.jpg</code></p>
+            <p class="kbd">Example: <code>scenery__sunrise-over-lake__jane-doe.jpg</code></p>
+          </div>
+
+          <div class="card">
+            <h3>Raw photo <span class="warn">•</span></h3>
+            <p>No verse added yet. We will review and add scripture before publishing.</p>
+            <div class="btns">
+              <a class="btn secondary" href="https://www.dropbox.com/request/jPpbec3mTcXPfycknlAl" target="_blank" rel="noopener">
+                Submit Raw Photo
+              </a>
+            </div>
+            <div class="sep"></div>
+            <p><strong>Optional filename hint:</strong></p>
+            <p><code>category__short-title__attribution.jpg</code></p>
+            <p class="kbd">Example: <code>animals__red-fox__john-smith.jpg</code></p>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="two-col">
+          <div class="card">
+            <h3>Accepted categories</h3>
+            <div class="category-chips">
+              <span class="pill">animals</span>
+              <span class="pill">fall</span>
+              <span class="pill">geology</span>
+              <span class="pill">scenery</span>
+              <span class="pill">space</span>
+              <span class="pill">spring</span>
+              <span class="pill">summer</span>
+              <span class="pill">textures</span>
+              <span class="pill">winter</span>
+              <span class="pill">seasonal</span>
