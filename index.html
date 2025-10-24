@@ -38,8 +38,12 @@
     }
     .wrap{max-width:960px;margin:0 auto;padding:32px 16px 64px}
     header{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+    /* CHANGED: let the image keep its aspect; no rounding, no forced square */
     .logo{
-      width:44px;height:44px;border-radius:10px;display:block;object-fit:cover;
+      height:44px;
+      width:auto;
+      display:block;
+      border-radius:0;
     }
     h1{margin:0;font-size:28px}
     .panel{
@@ -85,7 +89,7 @@
 <body>
   <div class="wrap">
     <header>
-      <img class="logo" src="images/FaithSaver-BrandTile-147x113.jpg" alt="FaithSaver logo" width="44" height="44">
+      <img class="logo" src="images/FaithSaver-BrandTile-147x113.jpg" alt="FaithSaver logo">
       <div>
         <h1>FaithSaver — Submit Your Photos</h1>
         <div class="pill">Two paths: Finished (with verse) or Raw (no verse yet)</div>
@@ -141,3 +145,76 @@
               <span class="pill">textures</span>
               <span class="pill">winter</span>
               <span class="pill">seasonal</span>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Image guidelines</h3>
+            <ul>
+              <li>Landscape orientation preferred (16:9 works best)</li>
+              <li>Minimum size <strong>1920×1080</strong></li>
+              <li>Formats: <strong>JPG</strong> or <strong>PNG</strong></li>
+              <li>Color: sRGB, non-progressive, 8-bit</li>
+              <li>Attribution: include your name in filename (optional)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="two-col">
+          <div class="card">
+            <h3>What happens after upload?</h3>
+            <ol>
+              <li>We review every submission.</li>
+              <li>Finished images (with verse) may be approved directly.</li>
+              <li>Raw photos go to our backlog; we’ll add a verse and export a finished image.</li>
+              <li>Approved finished images are published into FaithSaver’s rotation.</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Tips for faster approval</h3>
+            <ul>
+              <li>Keep text legible over the background (for finished images).</li>
+              <li>Avoid logos, watermarks, or sensitive personal data.</li>
+              <li>Use high-quality, noise-free photos with clear subject.</li>
+              <li>Prefer original work or content you own rights to.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="cards">
+          <div class="card">
+            <h3>Licensing & permissions</h3>
+            <p>By uploading, you affirm you own the rights (or have permission) to share the image and grant FaithSaver permission to display, crop, and resize it across Roku devices. If you submit a raw photo, you also permit us to add scripture text and export a finished derivative for display.</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <h2>Quick summary</h2>
+        <ul>
+          <li><strong>Finished</strong> = verse already on image → faster approval.</li>
+          <li><strong>Raw</strong> = photo only → we add verse before publishing.</li>
+          <li>Use <code>category__title__name.ext</code> naming if you want to help us sort.</li>
+        </ul>
+        <div class="sep"></div>
+        <p><span class="pill">Privacy</span> Uploaders can’t see other files; submissions go directly to our inbox.</p>
+        <p><span class="pill">Formats</span> JPG or PNG, 1920×1080 minimum, sRGB, non-progressive, 8-bit.</p>
+        <p><span class="pill">Review cadence</span> We process submissions periodically; thanks for your patience.</p>
+        <div class="sep"></div>
+        <p class="muted">FaithSaver community submissions</p>
+      </aside>
+    </div>
+
+    <footer>
+      <p>© <span id="yr"></span> FaithSaver</p>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById("yr").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
