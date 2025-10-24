@@ -69,39 +69,43 @@ try {
 
     Add-Type -AssemblyName System.Drawing
 
-    function Convert-ToBaselineJpegExact {
+    function Convert-ToBaselineJpeg {
         param(
-            [string]$inPath,
-            [string]$outPath,
-            [int]$width,
-            [int]$height
+            [Parameter(Mandatory)] [string] $inPath,
+            [Parameter(Mandatory)] [string] $outPath,
+            [Parameter(Mandatory)] [int] $width,
+            [Parameter(Mandatory)] [int] $height
         )
         $srcImg = [System.Drawing.Image]::FromFile($inPath)
         try {
-            $bmp   = New-Object System.Drawing.Bitmap($width, $height, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
-            try {
-                $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+            if (($srcImg.Width -ne $width) -or ($srcImg.Height -ne $height) -or ($srcImg.PixelFormat -eq [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)) {
+                $bmp = New-Object System.Drawing.Bitmap($width, $height, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
                 try {
-                    $gfx.SmoothingMode  = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-                    $gfx.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-                    $gfx.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-                    $gfx.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
-                    $rect = New-Object System.Drawing.Rectangle(0,0,$width,$height)
-                    $gfx.DrawImage($srcImg, $rect)
+                    $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+                    try {
+                        $gfx.SmoothingMode  = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+                        $gfx.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                        $gfx.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+                        $gfx.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+                        $rect = New-Object System.Drawing.Rectangle(0,0,$width,$height)
+                        $gfx.DrawImage($srcImg, $rect)
+                    } finally {
+                        $gfx.Dispose()
+                    }
+
+                    $jpegCodec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
+                    $encParams = New-Object System.Drawing.Imaging.EncoderParameters(1)
+                    $encParams.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, [int64]90)
+
+                    $tmp = "$outPath.tmp"
+                    $bmp.Save($tmp, $jpegCodec, $encParams)
+                    if (Test-Path $outPath) { Remove-Item $outPath -Force }
+                    Move-Item $tmp $outPath -Force
                 } finally {
-                    $gfx.Dispose()
+                    $bmp.Dispose()
                 }
-
-                $jpegCodec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
-                $encParams = New-Object System.Drawing.Imaging.EncoderParameters(1)
-                $encParams.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, [int64]90)
-
-                $tmp = "$outPath.tmp"
-                $bmp.Save($tmp, $jpegCodec, $encParams)
-                if (Test-Path $outPath) { Remove-Item $outPath -Force }
-                Move-Item $tmp $outPath -Force
-            } finally {
-                $bmp.Dispose()
+            } else {
+                Copy-Item $inPath $outPath -Force
             }
         } finally {
             $srcImg.Dispose()
@@ -111,31 +115,19 @@ try {
     Get-ChildItem $imagesRoot -Recurse -File |
         Where-Object { $_.Extension -notin @('.ai','.xcf') } |
         ForEach-Object {
-            $relPath = $_.FullName.Substring($imagesRoot.Length).TrimStart('\','/')
-            $destDir = Join-Path $imagesOut (Split-Path $relPath -Parent)
-            $destPath = Join-Path $imagesOut $relPath
-            if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+            $rel = $_.FullName.Substring($imagesRoot.Length).TrimStart('\','/')
+            $dst = Join-Path $imagesOut $rel
+            $dstDir = Split-Path $dst -Parent
+            if (-not (Test-Path $dstDir)) { New-Item -ItemType Directory -Path $dstDir -Force | Out-Null }
 
-            $leaf = (Split-Path $relPath -Leaf)
-            if ($coreMap.ContainsKey($leaf)) {
-                $w = [int]$coreMap[$leaf].W
-                $h = [int]$coreMap[$leaf].H
-                Write-Host "[Assets] Normalizing core JPEG to $w x $h, 24bpp RGB, baseline: images/$leaf"
-                Convert-ToBaselineJpegExact -inPath $_.FullName -outPath $destPath -width $w -height $h
+            $name = $_.Name
+            if ($coreMap.ContainsKey($name)) {
+                $spec = $coreMap[$name]
+                Convert-ToBaselineJpeg -inPath $_.FullName -outPath $dst -width $spec.W -height $spec.H
             } else {
-                Copy-Item $_.FullName $destPath -Force
+                Copy-Item $_.FullName $dst -Force
             }
         }
-
-    # Ensure at least one offline image for first-frame render
-    $animals001 = Join-Path $imagesOut "offline\animals\001.jpg"
-    if (-not (Test-Path $animals001)) {
-        $legacyAnimals = Join-Path $imagesOut "offline\animals.jpg"
-        if (Test-Path $legacyAnimals) {
-            New-Item -ItemType Directory -Path (Split-Path $animals001 -Parent) -Force | Out-Null
-            Copy-Item $legacyAnimals $animals001 -Force
-        }
-    }
 
     # ---------- Create ZIP with top-level manifest ----------
     $zipPath = Join-Path $root "FaithSaver.zip"
@@ -150,8 +142,6 @@ try {
         "source/main.brs",
         "components/SettingsScene.xml",
         "components/SettingsScene.brs",
-        "components/SettingsRow.xml",
-        "components/SettingsRow.brs",
         "components/SaverScene.xml",
         "components/SaverScene.brs",
         "images/FaithSaver-BrandTile-147x113.jpg",

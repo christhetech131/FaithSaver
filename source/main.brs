@@ -1,21 +1,23 @@
-' ========== FaithSaver main.brs (with extra debug for Settings) ==========
-
+' ========== FaithSaver main.brs (single production path) ==========
 sub FSLogMain(msg as string)
     print "[FaithSaver][Main] " ; msg
 end sub
 
+' --- Dev/Channel entry: run the production saver so behavior matches system Preview ---
 sub RunUserInterface()
     FSLogMain("RunUserInterface: enter (PRODUCTION saver)")
     RunScreenSaver()
     FSLogMain("RunUserInterface: exit")
 end sub
 
+' --- Screensaver entry (Roku calls this for real saver and system Preview) ---
 sub RunScreenSaver()
     FSLogMain("RunScreenSaver: enter")
-    ShowSaver(false)
+    ShowSaver()
     FSLogMain("RunScreenSaver: exit")
 end sub
 
+' --- Settings entry ---
 sub RunScreenSaverSettings()
     FSLogMain("RunScreenSaverSettings: enter")
 
@@ -29,37 +31,25 @@ sub RunScreenSaverSettings()
         return
     end if
 
-    ' Mirror current registry value in the scene header once it mounts
-    ' (scene handles its own header too; this is just extra visibility)
-    screen.Show()
+    screen.Show()  ' show the SCREEN (not the scene)
+    scene.setFocus(true)
     FSLogMain("Settings screen shown")
 
     while true
         msg = wait(0, port)
-        if type(msg) = "roSGScreenEvent" then
-            FSLogMain("roSGScreenEvent: IsScreenClosed=" + (msg.IsScreenClosed()).ToStr())
-            if msg.IsScreenClosed() then exit while
-
-        else if type(msg) = "roSGNodeEvent" then
-            n = msg.GetNode()
-            if n <> invalid then
-                FSLogMain("roSGNodeEvent: node=" + n.GetFieldString("id"))
-                if n.DoesExist("closeRequested") and n.closeRequested = true then
-                    FSLogMain("SettingsScene requested close")
-                    exit while
-                end if
+        if type(msg) = "roSGScreenEvent" and msg.IsScreenClosed() then exit while
+        if type(msg) = "roSGNodeEvent" then
+            if msg.GetNode() = scene and LCase(msg.GetField()) = "close" then
+                if msg.GetData() = true then exit while
             end if
-        else
-            FSLogMain("Other message type: " + type(msg))
         end if
     end while
 
     FSLogMain("RunScreenSaverSettings: exit")
 end sub
 
-sub ShowSaver(isPreview as boolean)
-    FSLogMain("ShowSaver: enter; isPreview=" + (isPreview=true).ToStr())
-
+' --- Common saver host (production behavior only) ---
+sub ShowSaver()
     screen = CreateObject("roSGScreen")
     port   = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
@@ -69,25 +59,17 @@ sub ShowSaver(isPreview as boolean)
         FSLogMain("ERROR: SaverScene failed to create")
         return
     end if
-    FSLogMain("SaverScene created OK")
 
-    if isPreview then
-        saver.SetField("mode", "preview")
-    else
-        saver.SetField("mode", "saver")
-    end if
-    saver.SetField("isPreview", isPreview)
-
-    saver.ObserveField("close", port)
     screen.Show()
+    saver.SetFocus(true)
+    FSLogMain("SaverScene shown")
 
     while true
         msg = wait(0, port)
         if type(msg) = "roSGScreenEvent" and msg.IsScreenClosed() then exit while
         if type(msg) = "roSGNodeEvent" then
-            n = msg.GetNode()
-            if n = saver and n.DoesExist("close") and n.close = true then
-                exit while
+            if msg.GetNode() = saver and LCase(msg.GetField()) = "close" then
+                if msg.GetData() = true then exit while
             end if
         end if
     end while

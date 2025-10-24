@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SaverScene" extends="Scene">
   <interface>
-    <field id="mode" type="string" value="saver" />
-    <field id="isPreview" type="boolean" value="false" />
     <field id="close" type="boolean" value="false" />
-    <!-- NEW: main watches this; SaverScene sets true when user presses ★ -->
-    <field id="requestSettings" type="boolean" value="false" />
   </interface>
 
   <children>
-    <!-- double-buffered Posters for clean swaps -->
+    <!-- background double buffer -->
     <Poster id="bgA" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" />
     <Poster id="bgB" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" visible="false" />
 
-    <!-- rotation timer (secs) -->
+    <!-- rotation timer for saver mode -->
     <Timer id="cycler" duration="180" repeat="true" control="stop" />
+
+    <!-- Online feed task (production-only behavior now) -->
+    <ImageFeedTask id="feed" />
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />

@@ -1,36 +1,34 @@
-' SettingsScene — plain labels + custom highlight (RGBA colors). No roFileSystem.
+' SettingsScene — Labels + custom highlight bar
+' Per updated rules: keep backExitsScene behavior; add registry guard/default.
 
 sub init()
     m.bg    = m.top.findNode("bg")
     m.menu  = m.top.findNode("menu")
     m.title = m.top.findNode("title")
+    m.hl    = m.top.findNode("hl")
 
-    ' Ensure the Roku Settings host exits on Back when embedded
-    m.top.backExitsScene = true
+    ' colors (0xRRGGBBAA)
+    m.colorNavy  = &h103A57FF
+    m.colorWhite = &hFFFFFFFF
+    m.colorBlack = &h000000FF
 
-    ' RGBA colors (0xRRGGBBAA)
-    m.colorNavy  = &h103A57FF   ' navy #103A57, fully opaque
-    m.colorWhite = &hFFFFFFFF   ' white
-    m.colorBlack = &h000000FF   ' black
-
-    ' Layout
+    ' layout
     m.rowH  = 72
     m.rowW  = 1680
     m.textX = 16
 
-    print "SettingsScene.init"
-
+    ' Build options
     BuildOptions()
 
-    ' Load saved category; default to animals
-    reg = CreateObject("roRegistrySection","FaithSaver")
-    saved = reg.Read("category")
-    if saved = invalid then saved = ""
-    m.savedKey = LCase(saved)
-    if m.savedKey = "" then m.savedKey = "animals"
-    print "Saved key: "; m.savedKey
+    ' load registry with guard; default animals
+    m.savedKey = "animals"
+    sec = CreateObject("roRegistrySection","FaithSaver")
+    if sec <> invalid then
+        saved = sec.Read("category")
+        if saved <> invalid and saved <> "" then m.savedKey = LCase(saved)
+    end if
 
-    ' Resolve saved index
+    ' resolve saved index
     m.selected = 0
     i = 0
     while i < m.keys.count()
@@ -41,18 +39,20 @@ sub init()
         i = i + 1
     end while
 
-    ' Start focus on saved
+    ' focus begins at saved selection
     m.focus = m.selected
-    print "Initial focus index: "; m.focus
-
-    BuildRows()
     Paint()
 
+    ' Make sure the scene has focus so key events hit onKeyEvent
     m.top.setFocus(true)
+
+    print "SettingsScene.init"
+    print "Saved key: " ; m.savedKey
+    print "Initial focus index:  " ; m.focus
 end sub
 
 sub BuildOptions()
-    ' Titles
+    ' titles
     m.titles = CreateObject("roArray", 10, true)
     season = CurrentSeasonName()
     m.titles.push("Seasonal (auto - " + season + ")")
@@ -66,7 +66,7 @@ sub BuildOptions()
     m.titles.push("Textures")
     m.titles.push("Winter")
 
-    ' Keys (parallel)
+    ' keys (parallel)
     m.keys = CreateObject("roArray", 10, true)
     m.keys.push("seasonal")
     m.keys.push("animals")
@@ -78,45 +78,20 @@ sub BuildOptions()
     m.keys.push("summer")
     m.keys.push("textures")
     m.keys.push("winter")
-end sub
 
-function CurrentSeasonName() as String
-    dt = CreateObject("roDateTime")
-    mth = dt.GetMonth()
-    if mth = 3 or mth = 4 or mth = 5 then return "spring"
-    if mth = 6 or mth = 7 or mth = 8 then return "summer"
-    if mth = 9 or mth = 10 or mth = 11 then return "fall"
-    return "winter"
-end function
-
-sub BuildRows()
-    ' Clear menu children
-    kids = m.menu.getChildren(-1, 0)
-    if kids <> invalid then
-        for each k in kids
-            if k <> invalid then m.menu.removeChild(k)
-        end for
-    end if
-
-    ' Highlight bar behind focused row
-    m.hl = CreateObject("roSGNode","Rectangle")
-    m.hl.width  = m.rowW
-    m.hl.height = m.rowH - 8
-    m.hl.opacity = 1.0
-    m.hl.color  = m.colorNavy
-    m.hl.translation = [0, 0]
-    m.menu.appendChild(m.hl)
-
-    ' Labels for each row
-    m.labels = CreateObject("roArray", m.titles.count(), true)
-    y = 0
+    ' build label nodes
     i = 0
+    y = 0
+    m.labels = CreateObject("roArray", m.titles.count(), true)
     while i < m.titles.count()
         lbl = CreateObject("roSGNode","Label")
-        lbl.translation = [m.textX, y]
-        lbl.opacity = 1.0
+        lbl.translation = [m.textX, y + 16]
+        lbl.width  = m.rowW
+        lbl.height = m.rowH
+        lbl.horizAlign = "left"
+        lbl.vertAlign  = "center"
         lbl.text  = m.titles[i]
-        lbl.color = m.colorBlack        ' unfocused default = black
+        lbl.color = m.colorBlack
         m.menu.appendChild(lbl)
         m.labels.push(lbl)
         y = y + m.rowH
@@ -124,19 +99,29 @@ sub BuildRows()
     end while
 end sub
 
+function CurrentSeasonName() as String
+    dt = CreateObject("roDateTime")
+    mth = dt.GetMonth()
+    if mth = 12 or mth <= 2 then return "winter"
+    if mth >= 3 and mth <= 5 then return "spring"
+    if mth >= 6 and mth <= 8 then return "summer"
+    return "fall"
+end function
+
 sub Paint()
-    ' Position highlight and force colors (every repaint)
+    ' highlight bar stays in sync with focus
     newY = m.focus * m.rowH
-    m.hl.translation = [0, newY]
+    m.hl.translation = [96, 144 + newY]
     m.hl.color = m.colorNavy
     m.hl.opacity = 1.0
 
+    ' optional label color toggle (kept on)
     i = 0
     while i < m.labels.count()
         if i = m.focus then
-            m.labels[i].color = m.colorWhite    ' focused
+            m.labels[i].color = m.colorWhite
         else
-            m.labels[i].color = m.colorBlack    ' unfocused
+            m.labels[i].color = m.colorBlack
         end if
         m.labels[i].opacity = 1.0
         i = i + 1
@@ -146,34 +131,41 @@ sub Paint()
     m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
 end sub
 
-function onKeyEvent(key as String, press as Boolean) as Boolean
+function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
 
-    if key = "up" then
+    ' Normalize key for cross-firmware behavior
+    lk = LCase(key)
+
+    if lk = "up" then
         if m.focus > 0 then
             m.focus = m.focus - 1
             Paint()
         end if
         return true
 
-    else if key = "down" then
+    else if lk = "down" then
         if m.focus < m.titles.count() - 1 then
             m.focus = m.focus + 1
             Paint()
         end if
         return true
 
-    else if key = "OK" then
+    else if lk = "ok" or lk = "select" then
         m.selected = m.focus
-        reg = CreateObject("roRegistrySection","FaithSaver")
-        reg.Write("category", LCase(m.keys[m.selected]))
-        reg.Flush()
-        print "Saved selection: "; m.keys[m.selected]
+        sec = CreateObject("roRegistrySection","FaithSaver")
+        if sec <> invalid then
+            sec.Write("category", LCase(m.keys[m.selected]))
+            sec.Flush()
+            print "[FaithSaver][Settings] Saved category=" + m.keys[m.selected]
+        else
+            print "[FaithSaver][Settings] ERROR: registry section invalid"
+        end if
         Paint()
         return true
 
-    else if key = "back" then
-        ' Do not consume Back so the host/scene can exit automatically.
+    else if lk = "back" then
+        ' Keep your current behavior: allow host to handle exit (no m.top.close here)
         return false
     end if
 
