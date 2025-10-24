@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component name="SettingsScene" extends="Scene">
+<component name="SettingsScene" extends="Scene" focusable="true">
   <children>
-    <!-- Background splash -->
+    <!-- Background -->
     <Poster id="bg" width="1920" height="1080" loadDisplayMode="scaleToFill" uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg" />
 
-    <!-- Title -->
-    <Label id="title" translation="[96,72]" width="1728" height="60" horizAlign="left" vertAlign="center" font="Large" color="0x000000FF" text="FaithSaver Settings" />
-
-    <!-- Highlight bar -->
+    <!-- List area -->
     <Rectangle id="hl" translation="[96,144]" width="1680" height="72" color="0x103A57FF" opacity="1.0" />
-
-    <!-- Menu container (labels created from BRS) -->
     <Group id="menu" translation="[96,144]" />
+    <Rectangle id="sepAbout" translation="[96,144]" width="1680" height="2" color="0x103A57FF" opacity="1.0" visible="false" />
+
+    <!-- HEADER (drawn last so it sits on top) -->
+    <Label id="title"
+           translation="[96,72]"
+           width="1728"
+           height="60"
+           horizAlign="left"
+           vertAlign="center"
+           font="font:LargeSystemFont"
+           color="0x000000FF"
+           text="FaithSaver Settings"
+           visible="true" />
+    <Rectangle id="sepHeader" translation="[96,132]" width="1680" height="2" color="0x103A57FF" opacity="1.0" visible="true" />
 
     <!-- Overlay host (About) -->
     <Group id="overlayHost" visible="false" />

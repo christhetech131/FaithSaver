@@ -1,10 +1,11 @@
 ' SettingsScene — Labels + highlight bar; registry save; About overlay
 
 sub init()
-  m.bg    = m.top.findNode("bg")
-  m.menu  = m.top.findNode("menu")
-  m.title = m.top.findNode("title")
-  m.hl    = m.top.findNode("hl")
+  m.menu       = m.top.findNode("menu")
+  m.title      = m.top.findNode("title")
+  m.hl         = m.top.findNode("hl")
+  m.sepHeader  = m.top.findNode("sepHeader")
+  m.sepAbout   = m.top.findNode("sepAbout")
   m.overlayHost = m.top.findNode("overlayHost")
 
   ' colors (0xRRGGBBAA)
@@ -19,7 +20,7 @@ sub init()
 
   BuildOptions()
 
-  ' load registry with guard; default animals
+  ' registry (guarded)
   m.savedKey = "animals"
   sec = CreateObject("roRegistrySection","FaithSaver")
   if sec <> invalid then
@@ -38,11 +39,29 @@ sub init()
     i = i + 1
   end while
 
-  ' focus begins at saved selection
+  ' initial focus = saved
   m.focus = m.selected
+
+  ' position separator above About row
+  if m.sepAbout <> invalid then
+    aboutY = 144 + (m.rowH * (m.titles.count() - 1)) - 8
+    m.sepAbout.translation = [96, aboutY]
+    m.sepAbout.visible = true
+  end if
+
+  ' header: ensure visible and on top
+  if m.sepHeader <> invalid then m.sepHeader.visible = true
+  if m.title <> invalid then
+    m.title.visible = true
+    m.title.opacity = 1.0
+  end if
+
+  ' set header text before first paint
+  UpdateTitle()
+
   Paint()
 
-  ' Ensure focus for key handling
+  m.top.focusable = true
   m.top.setFocus(true)
 
   print "SettingsScene.init"
@@ -51,14 +70,14 @@ sub init()
 end sub
 
 sub BuildOptions()
-  ' titles (add About at end)
+  ' order: Animals, Fall, Geology, Scenery, Seasonal, Space, Spring, Summer, Textures, Winter, About
   m.titles = CreateObject("roArray", 11, true)
-  season = CurrentSeasonName()
-  m.titles.push("Seasonal (auto - " + season + ")")
   m.titles.push("Animals")
   m.titles.push("Fall")
   m.titles.push("Geology")
   m.titles.push("Scenery")
+  season = CurrentSeasonName()
+  m.titles.push("Seasonal (auto - " + season + ")")
   m.titles.push("Space")
   m.titles.push("Spring")
   m.titles.push("Summer")
@@ -66,13 +85,12 @@ sub BuildOptions()
   m.titles.push("Winter")
   m.titles.push("About")
 
-  ' keys (parallel) — use "about" sentinel for the last row
   m.keys = CreateObject("roArray", 11, true)
-  m.keys.push("seasonal")
   m.keys.push("animals")
   m.keys.push("fall")
   m.keys.push("geology")
   m.keys.push("scenery")
+  m.keys.push("seasonal")
   m.keys.push("space")
   m.keys.push("spring")
   m.keys.push("summer")
@@ -80,9 +98,8 @@ sub BuildOptions()
   m.keys.push("winter")
   m.keys.push("about")
 
-  ' build label nodes
-  i = 0
-  y = 0
+  ' build list labels
+  i = 0 : y = 0
   m.labels = CreateObject("roArray", m.titles.count(), true)
   while i < m.titles.count()
     lbl = CreateObject("roSGNode","Label")
@@ -109,14 +126,40 @@ function CurrentSeasonName() as String
   return "fall"
 end function
 
+sub UpdateTitle()
+  display = "Unknown"
+  i = 0
+  while i < m.keys.count()
+    if LCase(m.keys[i]) = m.savedKey then
+      display = m.titles[i]
+      exit while
+    end if
+    i = i + 1
+  end while
+
+  if m.title <> invalid then
+    m.title.visible = true
+    m.title.opacity = 1.0
+    if m.savedKey <> "about" then
+      m.title.color = m.colorBlack
+      m.title.text  = "FaithSaver Settings — Saved: " + display
+    else
+      m.title.text  = "FaithSaver Settings"
+    end if
+    print "[FaithSaver][Settings] Header set to: " + m.title.text
+  else
+    print "[FaithSaver][Settings] ERROR: title node not found"
+  end if
+end sub
+
 sub Paint()
-  ' highlight bar stays in sync with focus
+  ' highlight bar
   newY = m.focus * m.rowH
   m.hl.translation = [96, 144 + newY]
   m.hl.color = m.colorNavy
   m.hl.opacity = 1.0
 
-  ' toggle label colors
+  ' label colors
   i = 0
   while i < m.labels.count()
     if i = m.focus then
@@ -128,25 +171,16 @@ sub Paint()
     i = i + 1
   end while
 
-  ' Title shows saved selection if not on About
-  if m.keys[m.selected] <> "about" then
-    m.title.color = m.colorBlack
-    m.title.text  = "FaithSaver Settings — Saved: " + m.titles[m.selected]
-  else
-    m.title.text  = "FaithSaver Settings"
-  end if
+  UpdateTitle()
 end sub
 
-' Open the About overlay as a child under overlayHost
 sub ShowAbout()
   if m.overlayHost = invalid then return
-  ' Clear any previous overlay
   while m.overlayHost.getChildCount() > 0
     m.overlayHost.removeChildIndex(m.overlayHost.getChildCount() - 1)
   end while
   overlay = CreateObject("roSGNode", "AboutOverlay")
   if overlay = invalid then return
-  ' Observe close to remove overlay and return focus
   overlay.ObserveField("close", "onOverlayClose")
   m.overlayHost.appendChild(overlay)
   m.overlayHost.visible = true
@@ -155,7 +189,6 @@ end sub
 
 sub onOverlayClose()
   if m.overlayHost = invalid then return
-  ' Remove overlay and restore focus to the menu
   while m.overlayHost.getChildCount() > 0
     m.overlayHost.removeChildIndex(m.overlayHost.getChildCount() - 1)
   end while
@@ -165,9 +198,10 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
   if not press then return false
+  key = LCase(key)
+  print "[FaithSaver][Settings] onKeyEvent key=" + key
 
-  ' If overlay is visible, let overlay handle keys (we still swallow here)
-  if m.overlayHost <> invalid and m.overlayHost.visible then
+  if m.overlayHost <> invalid and m.overlayHost.visible and m.overlayHost.getChildCount() > 0 then
     return true
   end if
 
@@ -177,36 +211,34 @@ function onKeyEvent(key as string, press as boolean) as boolean
       Paint()
     end if
     return true
-
   else if key = "down" then
     if m.focus < m.titles.count() - 1 then
       m.focus = m.focus + 1
       Paint()
     end if
     return true
-
   else if key = "ok" then
-    ' If About row selected, open overlay instead of saving
     if m.keys[m.focus] = "about" then
       ShowAbout()
       return true
     end if
 
-    ' Save category choice
     m.selected = m.focus
+    m.savedKey = LCase(m.keys[m.selected])
+
     sec = CreateObject("roRegistrySection","FaithSaver")
     if sec <> invalid then
-      sec.Write("category", LCase(m.keys[m.selected]))
+      sec.Write("category", m.savedKey)
       sec.Flush()
-      print "[FaithSaver][Settings] Saved category=" + m.keys[m.selected]
+      print "[FaithSaver][Settings] Saved category=" + m.savedKey
     else
       print "[FaithSaver][Settings] ERROR: registry section invalid"
     end if
+
+    UpdateTitle()
     Paint()
     return true
-
   else if key = "back" then
-    ' Let host exit settings (no m.top.close here)
     return false
   end if
 

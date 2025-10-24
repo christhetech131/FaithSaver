@@ -5,37 +5,26 @@
   </interface>
 
   <children>
-    <!-- Dimmer -->
     <Rectangle id="scrim" color="0x00000088" width="1920" height="1080" visible="true" />
 
-    <!-- Panel container -->
     <Group id="panel" translation="[120,120]">
-      <!-- Background card -->
       <Rectangle id="card" width="1680" height="840" color="0xFFFFFFFF" opacity="1.0">
-        <!-- thin border look -->
         <Poster id="border" width="1680" height="840" uri="" />
       </Rectangle>
 
-      <!-- Left: about image area -->
+      <!-- Left: LARGE text pane with wrapped paragraph -->
       <Group id="left" translation="[24,24]">
-        <Poster id="aboutImage" width="1120" height="792" loadDisplayMode="scaleToFill" uri="pkg:/images/about/FaithSaver-About-1920x1080.png" />
-        <!-- Optional QR in case the about image doesn’t already contain it -->
-        <Poster id="qr" width="160" height="160" translation="[936,608]" uri="pkg:/images/faithsaverqr.png" />
+        <Label id="title"   translation="[0,0]"   width="1120" height="60"  horizAlign="left" vertAlign="center" font="Large" />
+        <Label id="body"    translation="[0,80]"  width="1120" height="380" horizAlign="left" vertAlign="top" wrap="true" />
+        <Rectangle id="sep" translation="[0,480]" width="1120" height="2"   color="0x223041FF" />
+        <Label id="readmeLabel" translation="[0,500]" width="1120" height="40"  horizAlign="left" vertAlign="center" />
+        <Label id="readmeUrl"   translation="[0,540]" width="1120" height="120" horizAlign="left" vertAlign="top" wrap="true" />
       </Group>
 
-      <!-- Right: info text -->
+      <!-- Right: SMALL pane with QR + caption -->
       <Group id="right" translation="[1180,24]">
-        <Label id="title" width="456" height="60" horizAlign="left" vertAlign="center" font="Medium" />
-        <Label id="line1" width="456" height="64" horizAlign="left" vertAlign="top" wrap="true" />
-        <Label id="line2" width="456" height="64" horizAlign="left" vertAlign="top" wrap="true" />
-        <Label id="line3" width="456" height="64" horizAlign="left" vertAlign="top" wrap="true" />
-        <Label id="line4" width="456" height="64" horizAlign="left" vertAlign="top" wrap="true" />
-        <Label id="line5" width="456" height="64" horizAlign="left" vertAlign="top" wrap="true" />
-        <Label id="line6" width="456" height="64" horizAlign="left" vertAlign="top" wrap="true" />
-        <Label id="line7" width="456" height="64" horizAlign="left" vertAlign="top" wrap="true" />
-        <Rectangle id="sep" width="456" height="2" color="0x223041FF" translation="[0,520]" />
-        <Label id="readmeLabel" width="456" height="40" translation="[0,540]" horizAlign="left" vertAlign="center" />
-        <Label id="readmeUrl" width="456" height="120" translation="[0,580]" horizAlign="left" vertAlign="top" wrap="true" />
+        <Poster id="qr" width="320" height="320" translation="[68,40]" uri="pkg:/images/faithsaverqr.png" />
+        <Label id="qrCaption" translation="[0,380]" width="456" height="120" horizAlign="center" vertAlign="top" wrap="true" />
       </Group>
     </Group>
   </children>
