@@ -1,24 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SettingsScene" extends="Scene">
-  <interface>
-    <field id="close" type="boolean" value="false" />
-  </interface>
-
   <children>
     <!-- Background splash -->
-    <Poster id="bg" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill"
-            uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg" />
-    <Label id="title" translation="[48,48]" width="1824" height="64" horizAlign="left" vertAlign="top"
-           color="0x000000FF" text="FaithSaver Settings" />
+    <Poster id="bg" width="1920" height="1080" loadDisplayMode="scaleToFill" uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg" />
 
-    <!-- Optional contrast overlay (kept) -->
-    <Rectangle id="contrast" translation="[40,120]" width="1840" height="880" color="0xFFFFFF40" />
+    <!-- Title -->
+    <Label id="title" translation="[96,72]" width="1728" height="60" horizAlign="left" vertAlign="center" font="Large" color="0x000000FF" text="FaithSaver Settings" />
 
-    <!-- Your highlight bar (kept) -->
+    <!-- Highlight bar -->
     <Rectangle id="hl" translation="[96,144]" width="1680" height="72" color="0x103A57FF" opacity="1.0" />
 
-    <!-- Simple vertical list using Labels -->
+    <!-- Menu container (labels created from BRS) -->
     <Group id="menu" translation="[96,144]" />
+
+    <!-- Overlay host (About) -->
+    <Group id="overlayHost" visible="false" />
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />

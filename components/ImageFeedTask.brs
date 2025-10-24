@@ -1,175 +1,226 @@
-' *********** FaithSaver — ImageFeedTask.brs ***********
+' ImageFeedTask.brs — Pull image list from GitHub /<category> at repo root,
+' shuffle locally, expose as items. Uses optional ETag to reduce bandwidth.
 
-sub FSLogFeed(msg as string)
-    print "[FaithSaver][Feed] "; "" + msg
-end sub
-
-function S(v as dynamic) as string
+' ====== Helpers ======
+function FSStr(v as dynamic) as string
     if v = invalid then return ""
-    return "" + v
+    t = type(v)
+    if t = "roString" or t = "String" then return v
+    if t = "Boolean" then return (v and "true" or "false")
+    if t = "Integer" or t = "LongInteger" then return StrI(v)
+    if t = "Float" or t = "Double" then return Str(v)
+    return ""
 end function
 
-sub init()
-    m.top.functionName = "runTask"
-    FSLogFeed("init: functionName=runTask set")
-    m.cache = {} ' per-session cache: { "category" : [array of URIs] }
+sub SetStatus(msg as string)
+    m.top.status = msg
+    print "[FaithSaver][Feed] " ; msg
 end sub
 
-sub runTask()
-    FSLogFeed("runTask: start")
-    safeSetStatus("starting")
+' ====== CONFIG: your public repo/branch ======
+function RepoOwner()  as string : return "christhetech131" : end function
+function RepoName()   as string : return "FaithSaver" : end function
+function RepoBranch() as string : return "main" : end function
 
-    cat = ""
-    if m.top.getFields() <> invalid and m.top.getFields().DoesExist("category") then
-        cat = LCase("" + m.top.category)
-    end if
-    FSLogFeed("category=" + S(cat))
+' Optional clamp to keep rotation reasonable on huge folders
+function MaxItems() as integer : return 200 : end function
 
-    items = []
-    if cat = "preview-all-offline" then
-        items = buildAllOffline()
-    else
-        items = buildOfflinePreface(cat)
-        ' try online enrichment
-        online = fetchGithubList(cat)
-        if Type(online) = "roArray" and online.Count() > 0 then
-            ' shuffle once per session and append after the first offline
-            shuffleArray(online)
-            for each u in online
-                items.push(u)
-            end for
-        end if
-    end if
+' ====== GitHub API URL builders ======
+' List contents of /<category> at repo root
+function BuildListUrl(cat as string) as string
+    owner = RepoOwner()
+    repo  = RepoName()
+    ref   = RepoBranch()
+    c = LCase(FSStr(cat))
+    if c = "" then c = "seasonal"
+    ' https://api.github.com/repos/:owner/:repo/contents/:path?ref=:branch
+    return "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + c + "?ref=" + ref
+end function
 
-    FSLogFeed("final items count=" + S(items.Count()))
-    m.top.items = items
-    safeSetStatus("done")
-    FSLogFeed("runTask: end")
+' Fallback raw URL if download_url missing (rare)
+function BuildRawUrl(pathInRepo as string) as string
+    p = pathInRepo
+    if Left(p, 1) = "/" then p = Mid(p, 2)
+    return "https://raw.githubusercontent.com/" + RepoOwner() + "/" + RepoName() + "/" + RepoBranch() + "/" + p
+end function
+
+' ====== Shuffle ======
+' Fisher–Yates in-place shuffle
+sub ShuffleArray(a as object)
+    if a = invalid then return
+    n = a.count()
+    if n <= 1 then return
+    ' Seed the RNG once per run; BrightScript’s Rnd uses prior state.
+    seed = CreateObject("roTimespan").TotalMilliseconds()
+    Randomize(seed)
+    i = n - 1
+    while i > 0
+        ' Rnd(i) returns 0..i
+        r = Rnd(i)
+        if r > i then r = i
+        t = a[i]
+        a[i] = a[r]
+        a[r] = t
+        i = i - 1
+    end while
 end sub
 
-' ===== Offline builders =====
+' ====== Parse GitHub Contents API JSON → URLs ======
+function ParseGitHubContents(jsonStr as string) as object
+    urls = CreateObject("roArray", 0, true)
+    if jsonStr = invalid or jsonStr = "" then return urls
 
-function buildAllOffline() as object
-    base = "pkg:/images/offline/"
-    files = [
-        "animals.jpg","fall.jpg","geology.jpg","scenery.jpg","space.jpg",
-        "spring.jpg","summer.jpg","textures.jpg","winter.jpg","default.jpg"
-    ]
-    arr = []
-    for each f in files
-        arr.push(base + f)
-    end for
-    FSLogFeed("buildAllOffline: count=" + S(arr.Count()))
-    return arr
-end function
-
-function buildOfflinePreface(cat as string) as object
-    base = "pkg:/images/offline/"
-    files = [
-        "animals.jpg","fall.jpg","geology.jpg","scenery.jpg","space.jpg",
-        "spring.jpg","summer.jpg","textures.jpg","winter.jpg","default.jpg"
-    ]
-    arr = []
-    if cat <> invalid and cat <> "" then
-        want = cat + ".jpg"
-        for each f in files
-            if LCase(f) = want then
-                arr.push(base + f)
-            end if
-        end for
-    end if
-    ' add the rest (no duplicates)
-    for each f in files
-        uri = base + f
-        if arr.Lookup(uri) = invalid then arr.push(uri)
-    end for
-    FSLogFeed("buildOfflinePreface: count=" + S(arr.Count()))
-    return arr
-end function
-
-' ===== GitHub fetch =====
-
-function fetchGithubList(cat as string) as dynamic
-    if cat = invalid or cat = "" then return invalid
-    if cat = "default" then return invalid
-
-    if m.cache.DoesExist(cat) then
-        FSLogFeed("fetchGithubList: cache hit for " + cat)
-        return m.cache[cat]
-    end if
-
-    ' Map category to folder (same names per your repo)
-    folder = cat
-    url = "https://api.github.com/repos/christhetech131/FaithSaver/contents/" + folder
-    FSLogFeed("fetchGithubList: " + url)
-
-    rsp = httpGet(url, 6)
-    j = tryParseJson(rsp)
-    if Type(j) <> "roArray" then
-        FSLogFeed("fetchGithubList: not an array (fallback to offline only)")
-        return invalid
-    end if
-
-    arr = []
-    for each it in j
-        if Type(it) = "roAssociativeArray" then
-            name = LCase(S(it.name))
-            t    = LCase(S(it.type))
-            if t = "file" and Right(name, 4) = ".jpg" and name <> ".gitkeep" then
-                ' Convert to raw URL
-                raw = "https://raw.githubusercontent.com/christhetech131/FaithSaver/HEAD/" + folder + "/" + it.name
-                arr.push(raw)
-            end if
-        end if
-    end for
-
-    FSLogFeed("fetchGithubList: jpg count=" + S(arr.Count()))
-    m.cache[cat] = arr
-    return arr
-end function
-
-' ===== Utils =====
-
-sub shuffleArray(a as object)
-    ' Fisher–Yates
-    n = a.Count()
-    for i = n - 1 to 1 step -1
-        j = Rnd(i + 1) - 1 ' Rnd(upper) returns 1..upper
-        tmp = a[i]
-        a[i] = a[j]
-        a[j] = tmp
-    end for
-end sub
-
-sub safeSetStatus(s as dynamic)
-    m.top.status = s
-    FSLogFeed("status=" + S(s))
-end sub
-
-function httpGet(url as string, timeoutSeconds as integer) as dynamic
-    xfer = CreateObject("roUrlTransfer")
-    if xfer = invalid then
-        FSLogFeed("httpGet: roUrlTransfer invalid")
-        return invalid
-    end if
-    xfer.SetUrl(url)
-    xfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
-    xfer.AddHeader("User-Agent", "FaithSaver/1.0")
-    if GetInterface(xfer, "ifUrlTransfer") <> invalid then
-        xfer.SetRequestTimeout(timeoutSeconds * 1000)
-    end if
-    rsp = xfer.GetToString()
-    if rsp = invalid then
-        FSLogFeed("httpGet: invalid response")
-    else
-        FSLogFeed("httpGet: bytes=" + S(Len(rsp)))
-    end if
-    return rsp
-end function
-
-function tryParseJson(s as dynamic) as dynamic
-    if s = invalid or Len(s) = 0 then return invalid
     parser = CreateObject("roJSONParser")
-    if parser = invalid then return invalid
-    return parser.Parse(s)
+    data = invalid
+    if parser <> invalid then
+        data = parser.parse(jsonStr)
+    else
+        data = ParseJson(jsonStr)
+    end if
+
+    if type(data) = "roArray"
+        i = 0
+        while i < data.count()
+            e = data[i]
+            if type(e) = "roAssociativeArray"
+                ' Only files; skip subfolders
+                name = LCase(FSStr(e.lookup("name")))
+                if Right(name, 4) = ".jpg" or Right(name, 5) = ".jpeg" or Right(name, 4) = ".png"
+                    du = FSStr(e.lookup("download_url"))
+                    if du <> "" then
+                        urls.push(du)
+                    else
+                        path = FSStr(e.lookup("path"))
+                        if path <> "" then urls.push(BuildRawUrl(path))
+                    end if
+                end if
+            end if
+            i = i + 1
+        end while
+    else if type(data) = "roAssociativeArray"
+        msg = FSStr(data.lookup("message"))
+        if msg <> "" then SetStatus("GitHub API error: " + msg)
+    end if
+
+    return urls
 end function
+
+' ====== HTTP with optional ETag ======
+' Returns { code: int, body: string|invalid, etag: string|"" }
+function HttpGetWithETag(url as string, priorETag as string) as object
+    x = CreateObject("roUrlTransfer")
+    if x = invalid then return { code: -1, body: invalid, etag: "" }
+    x.setUrl(url)
+    x.setCertificatesFile("common:/certs/ca-bundle.crt")
+    x.initClientCertificates()
+    ' GitHub requires a UA; Accept recommended
+    x.SetUserAgent("FaithSaver/1.0 (+roku)")
+    x.AddHeader("Accept", "application/vnd.github+json")
+    if priorETag <> "" then x.AddHeader("If-None-Match", priorETag)
+
+    mp = CreateObject("roMessagePort")
+    x.setPort(mp)
+
+    body = x.GetToString()
+    code = -1
+    etag = ""
+
+    if x.Lookup("GetResponseCode") <> invalid then
+        code = x.GetResponseCode()
+    end if
+
+    ' Headers may or may not be accessible; try both methods
+    headers = invalid
+    if x.Lookup("GetResponseHeaders") <> invalid then
+        headers = x.GetResponseHeaders()
+        if type(headers) = "roAssociativeArray" then
+            ' Dropbox/GitHub usually send ETag; header keys may vary in case
+            if headers.doesexist("ETag") then etag = FSStr(headers.ETag)
+            if etag = "" and headers.doesexist("etag") then etag = FSStr(headers.etag)
+        end if
+    end if
+
+    return { code: code, body: body, etag: etag }
+end function
+
+' ====== Registry helpers for per-category ETag ======
+function ReadCategoryETag(cat as string) as string
+    sec = CreateObject("roRegistrySection", "FaithSaver")
+    if sec = invalid then return ""
+    key = "etag_" + LCase(FSStr(cat))
+    val = sec.Read(key)
+    if val = invalid then return ""
+    return FSStr(val)
+end function
+
+sub WriteCategoryETag(cat as string, etag as string)
+    if etag = invalid or etag = "" then return
+    sec = CreateObject("roRegistrySection", "FaithSaver")
+    if sec = invalid then return
+    key = "etag_" + LCase(FSStr(cat))
+    sec.Write(key, etag)
+    sec.Flush()
+end sub
+
+' ====== Task entry ======
+sub Run()
+    cat = LCase(FSStr(m.top.category))
+    if cat = "" then cat = "seasonal"
+
+    url = BuildListUrl(cat)
+    SetStatus("init: category=" + cat + " listUrl=" + url)
+
+    ' Strategy:
+    ' 1) If we ALREADY have items in memory from this process AND we have an ETag,
+    '    do a conditional GET. On 304, reuse current items (zero bytes).
+    ' 2) Otherwise, do a normal GET (we need the listing once per launch anyway).
+
+    priorItemsCount = 0
+    if m.top.items <> invalid then priorItemsCount = m.top.items.count()
+
+    priorETag = ReadCategoryETag(cat)
+    rsp = invalid
+
+    if priorETag <> "" and priorItemsCount > 0 then
+        rsp = HttpGetWithETag(url, priorETag)
+        if rsp.code = 304 then
+            SetStatus("304 Not Modified; reusing " + StrI(priorItemsCount) + " cached URLs")
+            return
+        end if
+    end if
+
+    ' If we didn’t try conditional, or conditional wasn’t usable, do a normal GET
+    if rsp = invalid or rsp.code = -1 or rsp.body = invalid then
+        rsp = HttpGetWithETag(url, "")
+    end if
+
+    if rsp.body = invalid or rsp.code < 200 or rsp.code >= 300 then
+        SetStatus("ERROR: HTTP " + StrI(rsp.code) + " fetching list")
+        m.top.items = []
+        return
+    end if
+
+    urls = ParseGitHubContents(rsp.body)
+    if urls.count() = 0 then
+        SetStatus("no images found in /" + cat + " on GitHub")
+        m.top.items = []
+        return
+    end if
+
+    ShuffleArray(urls)
+
+    ' Optional clamp
+    maxN = MaxItems()
+    if urls.count() > maxN then
+        ' Trim without re-shuffling; we already randomized order
+        while urls.count() > maxN
+            urls.pop()
+        end while
+    end if
+
+    SetStatus("ok: " + StrI(urls.count()) + " images, shuffled")
+    m.top.items = urls
+
+    ' Persist new ETag if provided
+    if rsp.etag <> "" then WriteCategoryETag(cat, rsp.etag)
+end sub

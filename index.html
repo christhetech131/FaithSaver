@@ -22,11 +22,12 @@
       --error: #dc2626;
       --border: #223041;
       --chip: #0f172a;
+      --link: #7db3e6;
     }
     @media (prefers-color-scheme: light){
       :root{
         --bg:#f6f7fb; --panel:#ffffff; --text:#111827; --muted:#6b7280;
-        --accent:#103A57; --accent-2:#1f6aa6; --border:#e5e7eb; --chip:#f3f4f6;
+        --accent:#103A57; --accent-2:#1f6aa6; --border:#e5e7eb; --chip:#f3f4f6; --link:#0a58ca;
       }
     }
     html,body{height:100%}
@@ -38,7 +39,6 @@
     }
     .wrap{max-width:960px;margin:0 auto;padding:32px 16px 64px}
     header{display:flex;align-items:center;gap:16px;margin-bottom:24px}
-    /* CHANGED: let the image keep its aspect; no rounding, no forced square */
     .logo{
       height:44px;
       width:auto;
@@ -46,6 +46,7 @@
       border-radius:0;
     }
     h1{margin:0;font-size:28px}
+    a{color:var(--link);text-decoration:underline}
     .panel{
       background:var(--panel);
       border:1px solid var(--border);
@@ -84,6 +85,7 @@
     .sep{height:1px;background:var(--border);margin:18px 0}
     .kbd{font-size:12px}
     .category-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+    .small{font-size:14px;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -161,29 +163,6 @@
 
         <div class="sep"></div>
 
-        <div class="two-col">
-          <div class="card">
-            <h3>What happens after upload?</h3>
-            <ol>
-              <li>We review every submission.</li>
-              <li>Finished images (with verse) may be approved directly.</li>
-              <li>Raw photos go to our backlog; we’ll add a verse and export a finished image.</li>
-              <li>Approved finished images are published into FaithSaver’s rotation.</li>
-            </ol>
-          </div>
-          <div class="card">
-            <h3>Tips for faster approval</h3>
-            <ul>
-              <li>Keep text legible over the background (for finished images).</li>
-              <li>Avoid logos, watermarks, or sensitive personal data.</li>
-              <li>Use high-quality, noise-free photos with clear subject.</li>
-              <li>Prefer original work or content you own rights to.</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="sep"></div>
-
         <div class="cards">
           <div class="card">
             <h3>Licensing & permissions</h3>
@@ -200,16 +179,25 @@
           <li>Use <code>category__title__name.ext</code> naming if you want to help us sort.</li>
         </ul>
         <div class="sep"></div>
+
+        <div class="card">
+          <h3>About FaithSaver</h3>
+          <p>FaithSaver is a Roku screensaver that shows faith-based images. The production saver pulls approved images directly from this GitHub repository (by category) and shuffles them on each run. Preview mode is offline-only.</p>
+          <p class="small">Categories: animals, fall, geology, scenery, space, spring, summer, textures, winter, seasonal.</p>
+          <p><strong>Project README:</strong><br>
+            <a href="https://github.com/christhetech131/FaithSaver#readme" target="_blank" rel="noopener">https://github.com/christhetech131/FaithSaver#readme</a>
+          </p>
+        </div>
+
+        <div class="sep"></div>
         <p><span class="pill">Privacy</span> Uploaders can’t see other files; submissions go directly to our inbox.</p>
         <p><span class="pill">Formats</span> JPG or PNG, 1920×1080 minimum, sRGB, non-progressive, 8-bit.</p>
         <p><span class="pill">Review cadence</span> We process submissions periodically; thanks for your patience.</p>
-        <div class="sep"></div>
-        <p class="muted">FaithSaver community submissions</p>
       </aside>
     </div>
 
     <footer>
-      <p>© <span id="yr"></span> FaithSaver</p>
+      <p>© <span id="yr"></span> FaithSaver • <a href="https://github.com/christhetech131/FaithSaver#readme" target="_blank" rel="noopener">README</a> • <a href="https://github.com/christhetech131/FaithSaver" target="_blank" rel="noopener">Source</a></p>
     </footer>
   </div>
 
