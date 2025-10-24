@@ -2,19 +2,14 @@
 <component name="SaverScene" extends="Scene">
   <interface>
     <field id="close" type="boolean" value="false" />
-    <!-- optional for logging: -->
-    <field id="mode" type="string" />
   </interface>
 
   <children>
-    <!-- Solid background (safety, prevents any “gray” bleed) -->
-    <Rectangle id="bgSolid" width="1920" height="1080" color="0x000000FF" />
-
-    <!-- Double-buffered image planes -->
+    <!-- Two full-screen posters; A is visible first -->
     <Poster id="bgA" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" visible="true" />
     <Poster id="bgB" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" visible="false" />
 
-    <!-- Rotation timer (seconds) -->
+    <!-- Rotation timer -->
     <Timer id="cycler" duration="30" repeat="true" control="stop" />
 
     <!-- Online feed task -->
