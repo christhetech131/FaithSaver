@@ -1,30 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component name="SettingsScene" extends="Scene" focusable="true">
+<component name="SaverScene" extends="Scene">
+  <interface>
+    <field id="close" type="boolean" value="false" />
+  </interface>
+
   <children>
-    <!-- Background -->
-    <Poster id="bg" width="1920" height="1080" loadDisplayMode="scaleToFill" uri="pkg:/images/FaithSaver-Splash-1920x1080.jpg" />
+    <!-- Double-buffered backgrounds (we’ll animate opacity for cross-fade) -->
+    <Poster id="bgA"
+            width="1920" height="1080"
+            translation="[0,0]"
+            loadDisplayMode="scaleToFill"
+            visible="true"
+            opacity="1.0" />
 
-    <!-- List area -->
-    <Rectangle id="hl" translation="[96,144]" width="1680" height="72" color="0x103A57FF" opacity="1.0" />
-    <Group id="menu" translation="[96,144]" />
-    <Rectangle id="sepAbout" translation="[96,144]" width="1680" height="2" color="0x103A57FF" opacity="1.0" visible="false" />
+    <Poster id="bgB"
+            width="1920" height="1080"
+            translation="[0,0]"
+            loadDisplayMode="scaleToFill"
+            visible="false"
+            opacity="0.0" />
 
-    <!-- HEADER (drawn last so it sits on top) -->
-    <Label id="title"
-           translation="[96,72]"
-           width="1728"
-           height="60"
-           horizAlign="left"
-           vertAlign="center"
-           font="font:LargeSystemFont"
-           color="0x000000FF"
-           text="FaithSaver Settings"
-           visible="true" />
-    <Rectangle id="sepHeader" translation="[96,132]" width="1680" height="2" color="0x103A57FF" opacity="1.0" visible="true" />
+    <!-- Rotation timer (production) -->
+    <Timer id="cycler" duration="30" repeat="true" control="stop" />
 
-    <!-- Overlay host (About) -->
-    <Group id="overlayHost" visible="false" />
+    <!-- Online feed (production-only) -->
+    <ImageFeedTask id="feed" />
+
+    <!-- Cross-fade animations (A<-B and B<-A) -->
+    <Animation id="fadeToA" duration="0.5" easeFunction="linear" repeat="false" control="stop">
+      <FloatFieldInterpolator fieldToInterp="bgA.opacity" key="[0.0, 1.0]" keyValue="[0.0, 1.0]" />
+      <FloatFieldInterpolator fieldToInterp="bgB.opacity" key="[0.0, 1.0]" keyValue="[1.0, 0.0]" />
+    </Animation>
+
+    <Animation id="fadeToB" duration="0.5" easeFunction="linear" repeat="false" control="stop">
+      <FloatFieldInterpolator fieldToInterp="bgA.opacity" key="[0.0, 1.0]" keyValue="[1.0, 0.0]" />
+      <FloatFieldInterpolator fieldToInterp="bgB.opacity" key="[0.0, 1.0]" keyValue="[0.0, 1.0]" />
+    </Animation>
   </children>
 
-  <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
+  <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
 </component>

@@ -3,7 +3,7 @@
   <interface>
     <field id="category" type="string" alwaysNotify="true" />
     <field id="items" type="array" alwaysNotify="true" />
-    <field id="status" type="string" />
+    <field id="status" type="string" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/components/ImageFeedTask.brs" />
 </component>

@@ -1,5 +1,4 @@
-' ImageFeedTask.brs — Pull image list from GitHub /<category> at repo root,
-' shuffle locally, expose as items. Uses optional ETag to reduce bandwidth.
+' ImageFeedTask.brs — GitHub folder listing → shuffled image URLs (portable API set)
 
 ' ====== Helpers ======
 function FSStr(v as dynamic) as string
@@ -26,7 +25,6 @@ function RepoBranch() as string : return "main" : end function
 function MaxItems() as integer : return 200 : end function
 
 ' ====== GitHub API URL builders ======
-' List contents of /<category> at repo root
 function BuildListUrl(cat as string) as string
     owner = RepoOwner()
     repo  = RepoName()
@@ -37,53 +35,48 @@ function BuildListUrl(cat as string) as string
     return "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + c + "?ref=" + ref
 end function
 
-' Fallback raw URL if download_url missing (rare)
 function BuildRawUrl(pathInRepo as string) as string
     p = pathInRepo
     if Left(p, 1) = "/" then p = Mid(p, 2)
     return "https://raw.githubusercontent.com/" + RepoOwner() + "/" + RepoName() + "/" + RepoBranch() + "/" + p
 end function
 
-' ====== Shuffle ======
-' Fisher–Yates in-place shuffle
+' ====== Shuffle (no Randomize; use current RNG state) ======
 sub ShuffleArray(a as object)
     if a = invalid then return
     n = a.count()
     if n <= 1 then return
-    ' Seed the RNG once per run; BrightScript’s Rnd uses prior state.
-    seed = CreateObject("roTimespan").TotalMilliseconds()
-    Randomize(seed)
+
+    ' Lightly stir the RNG without Randomize:
+    ' burn a few values based on current time to reduce repeatability across runs
+    burn = CreateObject("roTimespan").TotalMilliseconds() mod 17
+    k = 0
+    while k < burn
+        ignore = Rnd(1)
+        k = k + 1
+    end while
+
     i = n - 1
     while i > 0
-        ' Rnd(i) returns 0..i
-        r = Rnd(i)
+        r = Rnd(i) ' returns 0..i
         if r > i then r = i
-        t = a[i]
-        a[i] = a[r]
-        a[r] = t
+        t = a[i] : a[i] = a[r] : a[r] = t
         i = i - 1
     end while
 end sub
 
-' ====== Parse GitHub Contents API JSON → URLs ======
+' ====== Parse GitHub Contents API JSON → URLs (ParseJson only) ======
 function ParseGitHubContents(jsonStr as string) as object
     urls = CreateObject("roArray", 0, true)
     if jsonStr = invalid or jsonStr = "" then return urls
 
-    parser = CreateObject("roJSONParser")
-    data = invalid
-    if parser <> invalid then
-        data = parser.parse(jsonStr)
-    else
-        data = ParseJson(jsonStr)
-    end if
+    data = ParseJson(jsonStr)
 
     if type(data) = "roArray"
         i = 0
         while i < data.count()
             e = data[i]
             if type(e) = "roAssociativeArray"
-                ' Only files; skip subfolders
                 name = LCase(FSStr(e.lookup("name")))
                 if Right(name, 4) = ".jpg" or Right(name, 5) = ".jpeg" or Right(name, 4) = ".png"
                     du = FSStr(e.lookup("download_url"))
@@ -105,62 +98,28 @@ function ParseGitHubContents(jsonStr as string) as object
     return urls
 end function
 
-' ====== HTTP with optional ETag ======
-' Returns { code: int, body: string|invalid, etag: string|"" }
-function HttpGetWithETag(url as string, priorETag as string) as object
+' ====== HTTP (portable) ======
+' Returns body string or invalid on failure.
+function HttpGetBody(url as string) as dynamic
     x = CreateObject("roUrlTransfer")
-    if x = invalid then return { code: -1, body: invalid, etag: "" }
+    if x = invalid then
+        SetStatus("ERROR: roUrlTransfer invalid")
+        return invalid
+    end if
     x.setUrl(url)
     x.setCertificatesFile("common:/certs/ca-bundle.crt")
     x.initClientCertificates()
-    ' GitHub requires a UA; Accept recommended
-    x.SetUserAgent("FaithSaver/1.0 (+roku)")
+    x.AddHeader("User-Agent", "FaithSaver/1.0 (+roku)")
     x.AddHeader("Accept", "application/vnd.github+json")
-    if priorETag <> "" then x.AddHeader("If-None-Match", priorETag)
-
-    mp = CreateObject("roMessagePort")
-    x.setPort(mp)
 
     body = x.GetToString()
-    code = -1
-    etag = ""
-
-    if x.Lookup("GetResponseCode") <> invalid then
-        code = x.GetResponseCode()
+    if body = invalid then
+        SetStatus("ERROR: empty/invalid body")
+        return invalid
     end if
-
-    ' Headers may or may not be accessible; try both methods
-    headers = invalid
-    if x.Lookup("GetResponseHeaders") <> invalid then
-        headers = x.GetResponseHeaders()
-        if type(headers) = "roAssociativeArray" then
-            ' Dropbox/GitHub usually send ETag; header keys may vary in case
-            if headers.doesexist("ETag") then etag = FSStr(headers.ETag)
-            if etag = "" and headers.doesexist("etag") then etag = FSStr(headers.etag)
-        end if
-    end if
-
-    return { code: code, body: body, etag: etag }
+    SetStatus("HTTP ok, bodyLen=" + StrI(Len(body)))
+    return body
 end function
-
-' ====== Registry helpers for per-category ETag ======
-function ReadCategoryETag(cat as string) as string
-    sec = CreateObject("roRegistrySection", "FaithSaver")
-    if sec = invalid then return ""
-    key = "etag_" + LCase(FSStr(cat))
-    val = sec.Read(key)
-    if val = invalid then return ""
-    return FSStr(val)
-end function
-
-sub WriteCategoryETag(cat as string, etag as string)
-    if etag = invalid or etag = "" then return
-    sec = CreateObject("roRegistrySection", "FaithSaver")
-    if sec = invalid then return
-    key = "etag_" + LCase(FSStr(cat))
-    sec.Write(key, etag)
-    sec.Flush()
-end sub
 
 ' ====== Task entry ======
 sub Run()
@@ -170,37 +129,14 @@ sub Run()
     url = BuildListUrl(cat)
     SetStatus("init: category=" + cat + " listUrl=" + url)
 
-    ' Strategy:
-    ' 1) If we ALREADY have items in memory from this process AND we have an ETag,
-    '    do a conditional GET. On 304, reuse current items (zero bytes).
-    ' 2) Otherwise, do a normal GET (we need the listing once per launch anyway).
-
-    priorItemsCount = 0
-    if m.top.items <> invalid then priorItemsCount = m.top.items.count()
-
-    priorETag = ReadCategoryETag(cat)
-    rsp = invalid
-
-    if priorETag <> "" and priorItemsCount > 0 then
-        rsp = HttpGetWithETag(url, priorETag)
-        if rsp.code = 304 then
-            SetStatus("304 Not Modified; reusing " + StrI(priorItemsCount) + " cached URLs")
-            return
-        end if
-    end if
-
-    ' If we didn’t try conditional, or conditional wasn’t usable, do a normal GET
-    if rsp = invalid or rsp.code = -1 or rsp.body = invalid then
-        rsp = HttpGetWithETag(url, "")
-    end if
-
-    if rsp.body = invalid or rsp.code < 200 or rsp.code >= 300 then
-        SetStatus("ERROR: HTTP " + StrI(rsp.code) + " fetching list")
+    body = HttpGetBody(url)
+    if body = invalid then
         m.top.items = []
         return
     end if
 
-    urls = ParseGitHubContents(rsp.body)
+    urls = ParseGitHubContents(body)
+    SetStatus("parsed " + StrI(urls.count()) + " file(s) from listing")
     if urls.count() = 0 then
         SetStatus("no images found in /" + cat + " on GitHub")
         m.top.items = []
@@ -209,18 +145,25 @@ sub Run()
 
     ShuffleArray(urls)
 
-    ' Optional clamp
     maxN = MaxItems()
     if urls.count() > maxN then
-        ' Trim without re-shuffling; we already randomized order
         while urls.count() > maxN
             urls.pop()
         end while
+        SetStatus("clamped to " + StrI(maxN) + " items")
     end if
 
-    SetStatus("ok: " + StrI(urls.count()) + " images, shuffled")
-    m.top.items = urls
+    ' keep only plausible URIs
+    filtered = CreateObject("roArray", 0, true)
+    i = 0
+    while i < urls.count()
+        u = FSStr(urls[i])
+        if u <> "" and (Left(u, 5) = "http:" or Left(u, 6) = "https:" or Left(u, 5) = "pkg:/") then
+            filtered.push(u)
+        end if
+        i = i + 1
+    end while
 
-    ' Persist new ETag if provided
-    if rsp.etag <> "" then WriteCategoryETag(cat, rsp.etag)
+    SetStatus("ok: " + StrI(filtered.count()) + " images, shuffled")
+    m.top.items = filtered
 end sub

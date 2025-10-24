@@ -1,246 +1,180 @@
-' SettingsScene — Labels + highlight bar; registry save; About overlay
+' *********** FaithSaver — SaverScene.brs (safe preloading; no gray frames) ***********
 
-sub init()
-  m.menu       = m.top.findNode("menu")
-  m.title      = m.top.findNode("title")
-  m.hl         = m.top.findNode("hl")
-  m.sepHeader  = m.top.findNode("sepHeader")
-  m.sepAbout   = m.top.findNode("sepAbout")
-  m.overlayHost = m.top.findNode("overlayHost")
-
-  ' colors (0xRRGGBBAA)
-  m.colorNavy  = &h103A57FF
-  m.colorWhite = &hFFFFFFFF
-  m.colorBlack = &h000000FF
-
-  ' layout
-  m.rowH  = 72
-  m.rowW  = 1680
-  m.textX = 16
-
-  BuildOptions()
-
-  ' registry (guarded)
-  m.savedKey = "animals"
-  sec = CreateObject("roRegistrySection","FaithSaver")
-  if sec <> invalid then
-    saved = sec.Read("category")
-    if saved <> invalid and saved <> "" then m.savedKey = LCase(saved)
-  end if
-
-  ' resolve saved index
-  m.selected = 0
-  i = 0
-  while i < m.keys.count()
-    if LCase(m.keys[i]) = m.savedKey then
-      m.selected = i
-      exit while
-    end if
-    i = i + 1
-  end while
-
-  ' initial focus = saved
-  m.focus = m.selected
-
-  ' position separator above About row
-  if m.sepAbout <> invalid then
-    aboutY = 144 + (m.rowH * (m.titles.count() - 1)) - 8
-    m.sepAbout.translation = [96, aboutY]
-    m.sepAbout.visible = true
-  end if
-
-  ' header: ensure visible and on top
-  if m.sepHeader <> invalid then m.sepHeader.visible = true
-  if m.title <> invalid then
-    m.title.visible = true
-    m.title.opacity = 1.0
-  end if
-
-  ' set header text before first paint
-  UpdateTitle()
-
-  Paint()
-
-  m.top.focusable = true
-  m.top.setFocus(true)
-
-  print "SettingsScene.init"
-  print "Saved key: " ; m.savedKey
-  print "Initial focus index:  " ; m.focus
+sub FSLogSaver(msg as string)
+  print "[FaithSaver][Saver] "; ToStr(msg)
 end sub
 
-sub BuildOptions()
-  ' order: Animals, Fall, Geology, Scenery, Seasonal, Space, Spring, Summer, Textures, Winter, About
-  m.titles = CreateObject("roArray", 11, true)
-  m.titles.push("Animals")
-  m.titles.push("Fall")
-  m.titles.push("Geology")
-  m.titles.push("Scenery")
-  season = CurrentSeasonName()
-  m.titles.push("Seasonal (auto - " + season + ")")
-  m.titles.push("Space")
-  m.titles.push("Spring")
-  m.titles.push("Summer")
-  m.titles.push("Textures")
-  m.titles.push("Winter")
-  m.titles.push("About")
-
-  m.keys = CreateObject("roArray", 11, true)
-  m.keys.push("animals")
-  m.keys.push("fall")
-  m.keys.push("geology")
-  m.keys.push("scenery")
-  m.keys.push("seasonal")
-  m.keys.push("space")
-  m.keys.push("spring")
-  m.keys.push("summer")
-  m.keys.push("textures")
-  m.keys.push("winter")
-  m.keys.push("about")
-
-  ' build list labels
-  i = 0 : y = 0
-  m.labels = CreateObject("roArray", m.titles.count(), true)
-  while i < m.titles.count()
-    lbl = CreateObject("roSGNode","Label")
-    lbl.translation = [m.textX, y + 16]
-    lbl.width  = m.rowW
-    lbl.height = m.rowH
-    lbl.horizAlign = "left"
-    lbl.vertAlign  = "center"
-    lbl.text  = m.titles[i]
-    lbl.color = m.colorBlack
-    m.menu.appendChild(lbl)
-    m.labels.push(lbl)
-    y = y + m.rowH
-    i = i + 1
-  end while
-end sub
-
-function CurrentSeasonName() as String
-  dt = CreateObject("roDateTime")
-  mth = dt.GetMonth()
-  if mth = 12 or mth <= 2 then return "winter"
-  if mth >= 3 and mth <= 5 then return "spring"
-  if mth >= 6 and mth <= 8 then return "summer"
-  return "fall"
+function ToStr(v as dynamic) as string
+  if v = invalid then return ""
+  t = type(v)
+  if t = "Boolean" then return v and "true" or "false"
+  if t = "roString" or t = "String" then return v
+  if t = "Integer" or t = "LongInteger" then return StrI(v)
+  if t = "Float" or t = "Double" then return Str(v)
+  if t = "roArray" then return "Array(" + StrI(v.count()) + ")"
+  if t = "roAssociativeArray" then return "AA(" + StrI(v.count()) + ")"
+  return "<" + t + ">"
 end function
 
-sub UpdateTitle()
-  display = "Unknown"
-  i = 0
-  while i < m.keys.count()
-    if LCase(m.keys[i]) = m.savedKey then
-      display = m.titles[i]
-      exit while
-    end if
-    i = i + 1
-  end while
+' Map the first offline frame by category (fallback default)
+function FirstFrameUriForCategory(cat as string) as string
+  localMap = {
+    "animals":  "pkg:/images/offline/animals.jpg",
+    "fall":     "pkg:/images/offline/fall.jpg",
+    "geology":  "pkg:/images/offline/geology.jpg",
+    "scenery":  "pkg:/images/offline/scenery.jpg",
+    "space":    "pkg:/images/offline/space.jpg",
+    "spring":   "pkg:/images/offline/spring.jpg",
+    "summer":   "pkg:/images/offline/summer.jpg",
+    "textures": "pkg:/images/offline/textures.jpg",
+    "winter":   "pkg:/images/offline/winter.jpg",
+    "seasonal": "pkg:/images/offline/default.jpg",
+    "default":  "pkg:/images/offline/default.jpg"
+  }
+  key = LCase(cat)
+  uri = localMap[key]
+  if uri = invalid then uri = localMap["default"]
+  return uri
+end function
 
-  if m.title <> invalid then
-    m.title.visible = true
-    m.title.opacity = 1.0
-    if m.savedKey <> "about" then
-      m.title.color = m.colorBlack
-      m.title.text  = "FaithSaver Settings — Saved: " + display
-    else
-      m.title.text  = "FaithSaver Settings"
-    end if
-    print "[FaithSaver][Settings] Header set to: " + m.title.text
+' === Node state ===
+' m.active     : "A" or "B" — which poster is currently visible
+' m.pending    : node (bgA/bgB) that is loading a new image, or invalid
+' m.pendingKind: "offlineFirst" | "cycle" (for logging only)
+
+sub init()
+  FSLogSaver("init()")
+
+  m.bgA    = m.top.findNode("bgA")
+  m.bgB    = m.top.findNode("bgB")
+  m.cycler = m.top.findNode("cycler")
+  m.feed   = m.top.findNode("feed")
+
+  m.active = "A"
+  m.pending = invalid
+  m.pendingKind = ""
+  m.index = 0
+  m.items = CreateObject("roArray", 0, true)
+
+  ' Observe poster loadStatus so we only flip when the target is ready
+  if m.bgA <> invalid then m.bgA.ObserveField("loadStatus", "onPosterLoad")
+  if m.bgB <> invalid then m.bgB.ObserveField("loadStatus", "onPosterLoad")
+
+  ' Read category (default animals)
+  m.category = "animals"
+  sec = CreateObject("roRegistrySection", "FaithSaver")
+  if sec <> invalid then
+    val = sec.Read("category")
+    if val <> invalid and val <> "" then m.category = LCase(val)
+  end if
+  FSLogSaver("Registry category=" + m.category)
+
+  ' Show a guaranteed local splash immediately, visible on A
+  if m.bgA <> invalid then
+    m.bgA.visible = true
+    m.bgA.uri = "pkg:/images/FaithSaver-Splash-1920x1080.jpg"
+    FSLogSaver("Initial placeholder on A (splash)")
+  end if
+  if m.bgB <> invalid then m.bgB.visible = false
+
+  ' Start loading the offline first-frame into the hidden buffer (B) but DO NOT show yet
+  offlineUri = FirstFrameUriForCategory(m.category)
+  QueueLoadIntoInactive(offlineUri, "offlineFirst")
+
+  ' Wire feed + timer
+  if m.feed <> invalid then
+    m.feed.category = m.category
+    m.feed.ObserveField("items", "onFeedItems")
+    m.feed.ObserveField("status", "onFeedStatus")
+    m.feed.control = "run"
+    FSLogSaver("ImageFeedTask started (category=" + m.category + ")")
   else
-    print "[FaithSaver][Settings] ERROR: title node not found"
+    FSLogSaver("ERROR: feed task node not found")
+  end if
+
+  if m.cycler <> invalid then
+    m.cycler.ObserveField("fire", "onCycle")
+    FSLogSaver("cycler wired (duration= " + ToStr(m.cycler.duration) + "s)")
   end if
 end sub
 
-sub Paint()
-  ' highlight bar
-  newY = m.focus * m.rowH
-  m.hl.translation = [96, 144 + newY]
-  m.hl.color = m.colorNavy
-  m.hl.opacity = 1.0
+' Begin loading a URI into the hidden buffer; flip will occur in onPosterLoad when ready
+sub QueueLoadIntoInactive(uri as string, kind as string)
+  if uri = invalid or uri = "" then return
+  target = (m.active = "A") and m.bgB or m.bgA
+  if target = invalid then return
 
-  ' label colors
-  i = 0
-  while i < m.labels.count()
-    if i = m.focus then
-      m.labels[i].color = m.colorWhite
-    else
-      m.labels[i].color = m.colorBlack
-    end if
-    m.labels[i].opacity = 1.0
-    i = i + 1
-  end while
-
-  UpdateTitle()
+  ' Keep current image visible; load next in hidden target
+  target.visible = false
+  m.pending = target
+  m.pendingKind = kind
+  target.uri = uri
+  FSLogSaver("QueueLoad(" + kind + "): " + uri + " -> " + ((m.active="A") and "B" or "A"))
 end sub
 
-sub ShowAbout()
-  if m.overlayHost = invalid then return
-  while m.overlayHost.getChildCount() > 0
-    m.overlayHost.removeChildIndex(m.overlayHost.getChildCount() - 1)
-  end while
-  overlay = CreateObject("roSGNode", "AboutOverlay")
-  if overlay = invalid then return
-  overlay.ObserveField("close", "onOverlayClose")
-  m.overlayHost.appendChild(overlay)
-  m.overlayHost.visible = true
-  overlay.setFocus(true)
+' Flip to the node passed (assumes it is ready)
+sub FlipTo(node as object)
+  if node = invalid then return
+  if node = m.bgA then
+    m.bgA.visible = true
+    m.bgB.visible = false
+    m.active = "A"
+  else
+    m.bgB.visible = true
+    m.bgA.visible = false
+    m.active = "B"
+  end if
 end sub
 
-sub onOverlayClose()
-  if m.overlayHost = invalid then return
-  while m.overlayHost.getChildCount() > 0
-    m.overlayHost.removeChildIndex(m.overlayHost.getChildCount() - 1)
-  end while
-  m.overlayHost.visible = false
-  m.top.setFocus(true)
+' Poster load callback — only flip when the new image is ready
+sub onPosterLoad()
+  if m.pending = invalid then return
+
+  status = LCase(ToStr(m.pending.loadStatus))
+  if status = "ready" then
+    FSLogSaver("poster ready (" + m.pendingKind + "); flipping")
+    FlipTo(m.pending)
+    m.pending = invalid
+    m.pendingKind = ""
+  else if status = "failed" then
+    FSLogSaver("poster FAILED (" + m.pendingKind + "); keeping current image")
+    m.pending = invalid
+    m.pendingKind = ""
+  end if
 end sub
 
+' Feed status passthrough (for logs you see in telnet)
+sub onFeedStatus()
+  FSLogSaver("feed status: " + ToStr(m.feed.status))
+end sub
+
+' Feed delivered items → start cycler
+sub onFeedItems(evt as Object)
+  if evt = invalid then return
+  arr = evt.GetData()
+  if type(arr) <> "roArray" or arr.count() = 0 then
+    FSLogSaver("Feed empty; remain on offline image")
+    return
+  end if
+  m.items = arr
+  FSLogSaver("Feed items count= " + StrI(m.items.count()))
+  if m.cycler <> invalid then
+    m.cycler.control = "start"
+    FSLogSaver("Cycler started")
+  end if
+end sub
+
+' Timer fired — request next image; it will flip once ready (no gray)
+sub onCycle()
+  if m.items = invalid or m.items.count() = 0 then return
+  m.index = (m.index + 1) mod m.items.count()
+  nextUri = m.items[m.index]
+  QueueLoadIntoInactive(nextUri, "cycle")
+end sub
+
+' Keys: production saver swallows back/home
 function onKeyEvent(key as string, press as boolean) as boolean
   if not press then return false
-  key = LCase(key)
-  print "[FaithSaver][Settings] onKeyEvent key=" + key
-
-  if m.overlayHost <> invalid and m.overlayHost.visible and m.overlayHost.getChildCount() > 0 then
-    return true
-  end if
-
-  if key = "up" then
-    if m.focus > 0 then
-      m.focus = m.focus - 1
-      Paint()
-    end if
-    return true
-  else if key = "down" then
-    if m.focus < m.titles.count() - 1 then
-      m.focus = m.focus + 1
-      Paint()
-    end if
-    return true
-  else if key = "ok" then
-    if m.keys[m.focus] = "about" then
-      ShowAbout()
-      return true
-    end if
-
-    m.selected = m.focus
-    m.savedKey = LCase(m.keys[m.selected])
-
-    sec = CreateObject("roRegistrySection","FaithSaver")
-    if sec <> invalid then
-      sec.Write("category", m.savedKey)
-      sec.Flush()
-      print "[FaithSaver][Settings] Saved category=" + m.savedKey
-    else
-      print "[FaithSaver][Settings] ERROR: registry section invalid"
-    end if
-
-    UpdateTitle()
-    Paint()
-    return true
-  else if key = "back" then
-    return false
-  end if
-
-  return false
+  if key = "back" or key = "home" then return true
+  return true
 end function

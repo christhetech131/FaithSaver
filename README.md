@@ -1,221 +1,178 @@
 # FaithSaver — Roku SceneGraph Screensaver
 
-FaithSaver is a Roku screensaver that displays faith‑based images. The **production saver** pulls approved images directly from this GitHub repository (by category) using the GitHub Contents API, shuffles them client‑side on each run, and rotates through them on a timer. Roku’s “Preview” trigger routes to the same saver behavior (no separate preview path).
+FaithSaver is a Roku screensaver that displays faith‑based photography and scripture artwork. It supports a simple Settings screen with a category selector, an About overlay, and an online shuffle of approved images hosted in this repository.
+
+---
 
 ## Quick Links
 
-- **Landing / Submission page:** https://christhetech131.github.io/FaithSaver/
-- **Finished images Dropbox (with verse):** https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA
-- **Raw photos Dropbox (no verse yet):** https://www.dropbox.com/request/jPpbec3mTcXPfycknlAl
-- **Email (verses only):** faithsaver131@gmail.com
-- **Project README (this file):** https://github.com/christhetech131/FaithSaver#readme
+- **Project Website (GitHub Pages):** https://christhetech131.github.io/FaithSaver/
+- **Submit Images (Dropbox File Request):** https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA  
+  (Raw form URL: https://www.dropbox.com/request/jPpbec3mTcXPfycknlAl)
+- **Email for verse submissions / questions:** mailto:faithsaver131@gmail.com
 
 ---
 
-## Supported Categories & Repo Layout
+## How It Works
 
-Supported categories:
-```
-animals, fall, geology, scenery, seasonal, space, spring, summer, textures, winter
-```
+### Modes
+- **Production Saver (only)**
+  - No navigation. Back/Home keys are swallowed by the saver.
+  - Reads the selected **category** from the Roku Registry (`FaithSaver:category`).
+  - Immediately shows an **offline fallback image** for that category (from `pkg:/images/offline/*.jpg`).
+  - Starts an **online image feed** that lists the image files in the project’s GitHub repo under `/<category>/*.jpg` and shuffles them per run.
+  - Images then rotate on a timer (default **30 seconds**) using a double‑buffered crossfade to avoid black frames.
 
-**Repository layout** (root-level folders; each contains finished JPG/PNG files — no subfolders inside categories):
-```
-/animals/*.jpg
-/fall/*.jpg
-/geology/*.jpg
-/scenery/*.jpg
-/seasonal/*.jpg
-/space/*.jpg
-/spring/*.jpg
-/summer/*.jpg
-/textures/*.jpg
-/winter/*.jpg
-```
+- **Settings**
+  - Labels + highlight bar UI.
+  - **Back** exits Settings (handled by the host screen).
+  - Saves the selection to Registry (`FaithSaver:category`) and updates the header to show the saved choice.
+  - An **About** item opens the About overlay (see below).
 
-> Filenames are case-sensitive over HTTP. Prefer baseline sRGB **JPG** (non‑progressive, 8‑bit). PNGs are supported but typically larger.
+> Note: FaithSaver **does not** implement a separate preview mode. Roku’s “Preview” entry uses the same saver scene.
 
----
+### Categories
+Currently supported keys:
+`animals`, `fall`, `geology`, `scenery`, `seasonal`, `space`, `spring`, `summer`, `textures`, `winter`
 
-## Behavior Overview
-
-- **Single Saver Scene**: `SaverScene` used for production and for Roku “Preview” trigger.
-- **Settings**: `SettingsScene` shows a label list with a highlight bar. OK saves the selected category to the registry (`section: FaithSaver`, `key: category`). Back exits settings via the host.
-  - **Order**: Animals, Fall, Geology, Scenery, **Seasonal**, Space, Spring, Summer, Textures, Winter, About.
-  - Header uses `font:LargeSystemFont` and updates immediately after save.
-- **About overlay (in Settings)**: Left pane has a wrapped paragraph and README URL; right pane shows a QR code (`pkg:/images/faithsaverqr.png`) pointing to the public landing/submission page.
-- **Online Images (production)**: On launch, the saver fetches a single listing from GitHub for the selected category, **shuffles** the URLs (Fisher–Yates) and rotates them on a timer.
-- **Offline Fallback**: If the listing fails or is empty, the saver shows a local offline “first frame” for the category and does not start rotation.
-- **Low Bandwidth**: Exactly one HTTP call per launch to list files. If desired, the task can cache and reuse `ETag` (304 not modified) to avoid re-listing when nothing changed. Images themselves are fetched as they’re shown.
+If you pick **Seasonal**, the saver shows the seasonal offline frame and will pull from the `/seasonal` folder online (if populated).
 
 ---
 
-## Submissions Workflow
+## Online Image Source (GitHub)
 
-Contributors can send either:
-1) **Finished images (verse already applied)** — faster approval.  
-   Upload: https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA
-2) **Raw photos (no verse yet)** — we’ll add scripture before publishing.  
-   Upload: https://www.dropbox.com/request/jPpbec3mTcXPfycknlAl
-3) **Verse‑only (no image)** — email the verse text and translation preferences.  
-   Email: **faithsaver131@gmail.com** (include reference and preferred translation(s); we’ll typeset it and include available translations as licensing permits).
+The production saver fetches URLs using the GitHub Contents API for this repo:
+- Owner: `christhetech131`
+- Repo: `FaithSaver`
+- Branch: `main`
+- Path per category: `/<category>/*.jpg`
 
-**Recommended filename format** (optional, helps sorting):
-```
-category__short-title__attribution.jpg
-# example: scenery__sunrise-over-lake__jane-doe.jpg
-```
+Only files at the **category root** are included (no subfolders). The feed client filters for `.jpg`, `.jpeg`, or `.png` file names and shuffles them once per run. It also supports ETag caching to keep bandwidth low when images haven’t changed.
 
-Approved finished images are moved into the appropriate category folder in this repo. The app auto-discovers them on the next launch.
-
-**Image guidelines**
-- Landscape orientation preferred (16:9 best)
-- Minimum size **1920×1080**
-- Color: sRGB, **non‑progressive**, 8‑bit
-- Avoid logos/watermarks
-- For finished images, ensure verse text is legible over the background
+**Tip:** If you are adding a new image to be used online, place it in the appropriate category folder at the repository root (e.g., `/spring/new-image.jpg`).
 
 ---
 
-## Implementation Details
+## Submitting Images
 
-### Entry Points (manifest)
-```
+We accept **two types** of contributions:
+
+1) **Finished images** with verses already designed on the artwork.  
+2) **Raw photographs** where we will add verses and typographic treatment before approval.
+
+### Submit via Dropbox (no account required)
+- **File Request Link:** https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA  
+  (Raw form link, if needed: https://www.dropbox.com/request/jPpbec3mTcXPfycknlAl)
+
+Upload your files there. The maintainer moves approved images into the proper category in this repo.
+
+### Submit verses only (no image)
+- Email **faithsaver131@gmail.com** with the verse text and translation notes.  
+  We will typeset the verse onto curated photos and include commonly available Bible translations.
+
+**Image Requirements**
+- Baseline sRGB JPG/PNG, **8‑bit**, **non‑progressive**, **no CMYK**, no EXIF rotations that break Roku decoders.
+- **1920×1080 or larger** recommended (landscape).
+
+---
+
+## UI Details
+
+### Settings Screen
+- Background splash: `pkg:/images/FaithSaver-Splash-1920x1080.jpg`
+- Highlight color: `0x103A57FF` (Roku RGBA)
+- Focused text: `0xFFFFFFFF`, Unfocused text: `0x000000FF`
+- Title shows: “FaithSaver Settings — Saved: <current selection>”
+- **About** item at the bottom of the list
+
+### About Overlay
+- Left: large image card (e.g., `pkg:/images/about/FaithSaver-About-1920x1080.png`)
+- Right: QR and descriptive text (long text wraps)
+- A README link is displayed so users can visit on their phone
+- Optional QR asset at `pkg:/images/faithsaverqr.png`
+
+---
+
+## Transitions & Rotation
+
+- Double‑buffered **crossfade** implemented with two Posters (`bgA`, `bgB`) and a short fade:
+  - `bgNext.opacity` fades from 0 to 1
+  - `bgCurrent.opacity` fades from 1 to 0
+  - Swap active buffer after the fade completes
+- Rotation **interval** default is **30 seconds** (configurable in `components/SaverScene.xml` Timer `duration` value).
+
+---
+
+## Build, Package, and Run (Dev)
+
+1) Ensure the following required files exist:
+   - `/manifest`
+   - `/source/main.brs`
+   - `/components/SaverScene.xml`, `/components/SaverScene.brs`
+   - `/components/ImageFeedTask.xml`, `/components/ImageFeedTask.brs`
+   - `/components/SettingsScene.xml`, `/components/SettingsScene.brs`
+   - `/components/AboutOverlay.xml`, `/components/AboutOverlay.brs`
+   - `/images/FaithSaver-BrandTile-147x113.jpg`
+   - `/images/FaithSaver-Splash-1920x1080.jpg`
+   - `/images/FaithSaver-Splash-1280x720.jpg`
+   - `/images/offline/*.jpg` (one per category fallback)
+
+2) Pack into a zip and side‑load to your Roku dev device.  
+   Watch telnet logs at `telnet <roku-ip> 8085` for diagnostics.
+
+3) In Settings, select a category and hit **OK** to save.  
+   When the screensaver runs, it will show the offline image immediately, then rotate through the online list if available.
+
+---
+
+## Manifest Essentials
+
+```text
+title=FaithSaver
+subtitle=Faith-based photo screensaver
+major_version=1
+minor_version=0
+build_version=0
+
+mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
+mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-540x405.jpg
+
+splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
+splash_screen_hd =pkg:/images/FaithSaver-Splash-1280x720.jpg
+
+ui_brand_tile=pkg:/images/FaithSaver-BrandTile-147x113.jpg
+search_button_logo=pkg:/images/FaithSaver-SearchButton-165x60.png
+
+ui_resolutions=fhd
+
 run_screensaver=RunScreenSaver
 run_screensaver_settings=RunScreenSaverSettings
-run_screensaver_preview=RunScreenSaverPreview  # Routed to same saver path
+
+screensaver_title=FaithSaver
 ```
 
-### Scenes
-- **SaverScene** (unified saver)
-  - Reads registry `FaithSaver/category` (default `animals`).
-  - Shows offline first frame immediately.
-  - Runs `ImageFeedTask` to fetch GitHub URLs, shuffles results, starts rotation timer only if items exist.
-  - Swallows keys in saver mode.
-- **SettingsScene**
-  - Label list + custom highlight.
-  - Colors: highlight `0x103A57FF`, focused text `0xFFFFFFFF`, unfocused `0x000000FF`.
-  - Registry write to `FaithSaver/category` on OK (with `Flush()`).
-  - “About” overlay with QR and README link; Back exits settings.
-
-### Online Image Listing
-`/components/ImageFeedTask.brs` calls GitHub **Contents API** for the selected category:
-```
-GET https://api.github.com/repos/christhetech131/FaithSaver/contents/<category>?ref=main
-Headers:
-  User-Agent: FaithSaver/1.0 (+roku)
-  Accept: application/vnd.github+json
-  If-None-Match: "<etag>"       # optional
-```
-The task parses the JSON array, collects `download_url` values (or builds raw URLs), shuffles (Fisher–Yates), optionally clamps a max count, sets `m.top.items`, and starts the rotation timer in the scene. If `ETag` present, it’s cached per‑category (e.g., `etag_scenery`) for the next run.
-
-**Rate limits**: Unauthenticated API allows ~60 requests/hour per IP. With one listing per launch (no polling), usage is minimal.
-
-### Rotation Timer
-- Runs only after items are present (saver mode).
-- Interval is configurable in `SaverScene.brs` (cycler/timer node).
-- A practical starting range is **8–12 seconds** per image.
-
----
-
-## Assets & Manifest Keys (filenames must match exactly)
-
-- Tile (opaque): `pkg:/images/FaithSaver-BrandTile-147x113.jpg`
-- Splash FHD: `pkg:/images/FaithSaver-Splash-1920x1080.jpg`
-- Splash HD:  `pkg:/images/FaithSaver-Splash-1280x720.jpg`
-- Poster (if used in store art previews): `pkg:/images/FaithSaver-Poster-540x405.jpg`
-- About image: `pkg:/images/about/FaithSaver-About-1920x1080.png`
-- QR image: `pkg:/images/faithsaverqr.png`
-
-Manifest keys must reference the exact files above (case‑sensitive). The tile must be **opaque** (no transparency).
-
----
-
-## Build & Packaging
-
-- **PowerShell**: `Build-FaithSaver.ps1` (zero flags by default)
-  - Validates required files/folders
-  - Does not mutate image bytes
-  - Emits packaged ZIP to `./dist/` and current directory
-  - Exits non‑zero with clear error messages on failure
-
-Minimum project structure:
-```
-/manifest
-/source/main.brs
-/components/SaverScene.xml
-/components/SaverScene.brs
-/components/SettingsScene.xml
-/components/SettingsScene.brs
-/components/ImageFeedTask.xml
-/components/ImageFeedTask.brs
-/components/AboutOverlay.xml
-/components/AboutOverlay.brs
-/images/FaithSaver-BrandTile-147x113.jpg
-/images/FaithSaver-Splash-1920x1080.jpg
-/images/FaithSaver-Splash-1280x720.jpg
-/images/faithsaverqr.png
-/images/about/FaithSaver-About-1920x1080.png
-/animals/*.jpg
-/... (other category folders at repo root)
-```
+> Ensure `FaithSaver-BrandTile-147x113.jpg` is **opaque** and filenames match exactly (case‑sensitive on some toolchains).
 
 ---
 
 ## Troubleshooting
 
-- **Only splash shows**: Confirm SaverScene created and feed task ran; verify category folder has at least one valid image.
-- **No rotation**: Feed may be empty or failed; check logs for `items=Array(N)` and cycler start.
-- **Decode errors**: Re‑export as baseline sRGB JPG (non‑progressive).
-- **Settings not saving**: Verify `roRegistrySection("FaithSaver")` writes `category` and calls `Flush()`.
-- **Rate limit**: Very unlikely. If hit, rely on offline first frame; relaunch later.
+- **No online rotation:** Verify your Roku has network access and that the GitHub category folder has `.jpg` images at the root.  
+- **Crashes in dev mode when cycling:** Some firmware builds are stricter with networking APIs in dev sessions. The app is coded to use broadly compatible `roUrlTransfer` calls (no unsupported methods). If you still see issues, test by letting the screensaver auto‑launch from the Home screen.
+- **Black frames between images:** The app now uses a crossfade. If you notice abrupt transitions, confirm both Posters are present and `animationDurationMs` is set in the scene (see code).
 
 ---
 
-## Store Submission Readiness (Checklist)
+## Privacy & Attribution
 
-**Functional**
-- [ ] Runs crash‑free on current Roku OS (tested on at least one FHD device; if possible, also test an HD device).
-- [ ] Settings: Up/Down/OK work; Back exits to host. Header updates after save.
-- [ ] Saver: shows offline first frame immediately; cycles through online images when available.
-- [ ] No navigation or focus leaks in saver mode; Back/Home are swallowed.
-- [ ] Network: exactly one GitHub list call on launch; no polling.
-
-**Assets & Manifest**
-- [ ] `mm_icon_focus_hd` and `mm_icon_focus_fhd` both point to `pkg:/images/FaithSaver-Poster-540x405.jpg` (or your final poster art).  
-- [ ] `splash_screen_hd` and `splash_screen_fhd` point to the exact splash filenames listed above.
-- [ ] `ui_brand_tile` references opaque `pkg:/images/FaithSaver-BrandTile-147x113.jpg`.
-- [ ] All referenced files exist in the package; no case/spacing mismatches.
-
-**Store Listing Materials**
-- [ ] Channel/Screensaver name: *FaithSaver*.
-- [ ] Short & long descriptions (non‑promotional, accurate).
-- [ ] Category: Screensaver.
-- [ ] **Store poster** (540×405) and **screenshots** (1920×1080) prepared.
-- [ ] Support contact: **faithsaver131@gmail.com**.
-- [ ] Privacy: No collection of personal data by the app (document this in the listing).
-- [ ] Landing page URL (optional): https://christhetech131.github.io/FaithSaver/
-
-**QA Pass**
-- [ ] Load time reasonable; splash displays correctly.
-- [ ] Remote keys behave as described (no unintended exits).
-- [ ] Images render correctly (no progressive/CMYK issues).
-- [ ] GitHub listing works for at least one category with >1 image and shuffles order between runs.
-
-**Packaging**
-- [ ] Built with `Build-FaithSaver.ps1`; ZIP validated and uploaded for certification/testing.
+- Uploaded images should be original or licensed for redistribution. You retain rights to your work; by submitting, you grant permission to display the image within the FaithSaver app and repository.
+- No tracking or analytics are included in the saver.
 
 ---
 
-## Licensing & Permissions
+## Contact
 
-By uploading, you affirm you own the rights (or have permission) to share the image and grant FaithSaver permission to display, crop, and resize it across Roku devices. For raw photos, you also permit adding scripture text and exporting a finished derivative for display.
+- Email: **faithsaver131@gmail.com**
+- Project site: https://christhetech131.github.io/FaithSaver/
+- Repository: https://github.com/christhetech131/FaithSaver/
 
----
-
-## Roadmap
-
-- Optional size/EXIF checks before admitting images
-- Automated curation helpers (scripts)
-- Optional per‑category max‑items clamp and timer
-- Optional About image variants for HD vs FHD
