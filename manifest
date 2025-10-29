@@ -22,6 +22,7 @@ ui_resolutions=fhd
 ' REQUIRED entry points
 run_screensaver=RunScreenSaver
 run_screensaver_settings=RunScreenSaverSettings
+run_screensaver_preview=RunScreenSaverPreview
 
 ' identify as a screensaver
 screensaver_title=FaithSaver

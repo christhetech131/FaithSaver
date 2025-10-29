@@ -1,19 +1,19 @@
-' ========== FaithSaver main.brs (single production path) ==========
+' ========== FaithSaver main.brs (unified saver; no SetScene) ==========
 sub FSLogMain(msg as string)
     print "[FaithSaver][Main] " ; msg
 end sub
 
-' --- Dev/Channel entry: run the production saver so behavior matches system Preview ---
+' --- Channel (production) entry ---
 sub RunUserInterface()
     FSLogMain("RunUserInterface: enter (PRODUCTION saver)")
     RunScreenSaver()
     FSLogMain("RunUserInterface: exit")
 end sub
 
-' --- Screensaver entry (Roku calls this for real saver and system Preview) ---
+' --- Screensaver entry (Roku calls this when the saver actually runs) ---
 sub RunScreenSaver()
     FSLogMain("RunScreenSaver: enter")
-    ShowSaver()
+    ShowSaver(false) ' production
     FSLogMain("RunScreenSaver: exit")
 end sub
 
@@ -31,7 +31,7 @@ sub RunScreenSaverSettings()
         return
     end if
 
-    screen.Show()  ' show the SCREEN (not the scene)
+    screen.Show()            ' show SCREEN, not scene
     scene.setFocus(true)
     FSLogMain("Settings screen shown")
 
@@ -48,8 +48,15 @@ sub RunScreenSaverSettings()
     FSLogMain("RunScreenSaverSettings: exit")
 end sub
 
-' --- Common saver host (production behavior only) ---
-sub ShowSaver()
+' --- Preview launcher (DEV) — intentionally routes to production saver (no separate preview) ---
+sub RunScreenSaverPreview()
+    FSLogMain("RunScreenSaverPreview: enter (routes to production saver)")
+    ShowSaver(false) ' no separate preview behavior by design
+    FSLogMain("RunScreenSaverPreview: exit")
+end sub
+
+' --- Common saver host ---
+sub ShowSaver(isPreview as boolean)
     screen = CreateObject("roSGScreen")
     port   = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
@@ -60,9 +67,12 @@ sub ShowSaver()
         return
     end if
 
+    ' Always production behavior (preview removed)
+    saver.mode = "saver"
+    FSLogMain("Mode: saver (production)")
+
     screen.Show()
     saver.SetFocus(true)
-    FSLogMain("SaverScene shown")
 
     while true
         msg = wait(0, port)

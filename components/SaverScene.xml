@@ -1,19 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component name="SaverScene" extends="Scene">
-  <interface>
-    <field id="close" type="boolean" value="false" />
-  </interface>
-
+<component name="SaverScene" extends="Scene" focusable="true">
   <children>
-    <!-- Two full-screen posters; A is visible first -->
-    <Poster id="bgA" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" visible="true" />
-    <Poster id="bgB" width="1920" height="1080" translation="[0,0]" loadDisplayMode="scaleToFill" visible="false" />
+    <!-- Double-buffered background posters -->
+    <Poster id="bgA" width="1920" height="1080" loadDisplayMode="scaleToFill" visible="true" />
+    <Poster id="bgB" width="1920" height="1080" loadDisplayMode="scaleToFill" visible="false" />
 
-    <!-- Rotation timer -->
-    <Timer id="cycler" duration="30" repeat="true" control="stop" />
+    <!-- Image cycler timer (SECONDS, not ms) -->
+    <Timer id="cycler" repeat="true" duration="15" control="stop" />
 
-    <!-- Online feed task -->
-    <ImageFeedTask id="feed" />
+    <!-- Online image feed task -->
+    <ImageFeedTask id="feed" control="stop" />
   </children>
 
   <script type="text/brightscript" uri="pkg:/components/SaverScene.brs" />
