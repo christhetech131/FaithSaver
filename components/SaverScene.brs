@@ -1,4 +1,4 @@
-' *********** FaithSaver — SaverScene.brs ***********
+' *********** FaithSaver — SaverScene.brs (full file) ***********
 
 sub FSLogSaver(msg as string)
   print "[FaithSaver][Saver] "; ToStr(msg)
@@ -16,7 +16,7 @@ function ToStr(v as dynamic) as string
   else if t = "Float" or t = "Double" then
     return Str(v)
   else if t = "roArray" then
-    return "Array(" + StrI(v.count()) + ")"
+    return "Array( " + StrI(v.count()) + ")"
   else if t = "roAssociativeArray" then
     return "AA(" + StrI(v.count()) + ")"
   else
@@ -24,20 +24,32 @@ function ToStr(v as dynamic) as string
   end if
 end function
 
+' =========================
+' Scene lifecycle
+' =========================
 sub init()
   FSLogSaver("init()")
 
+  ' Scene graph nodes
   m.bgA    = m.top.findNode("bgA")
   m.bgB    = m.top.findNode("bgB")
-  m.cycler = m.top.findNode("cycler")
-  m.feed   = m.top.findNode("feed")
-  m.hint   = m.top.findNode("previewHint")
+  m.cycler = m.top.findNode("cycler")   ' Timer
+  m.feed   = m.top.findNode("feed")     ' ImageFeedTask
+  m.hint   = m.top.findNode("previewHint") ' may be invalid
 
-  m.activeIsA = true
-  m.index = 0
-  m.items = CreateObject("roArray", 0, true)
+  ' State
+  m.activeIsA     = true
+  m.index         = 0
+  m.items         = CreateObject("roArray", 0, true) ' online items when available
+  m.pendingTarget = invalid   ' "A" or "B" when a load is in-flight
+  m.pendingUri    = ""
+  m.flipArmed     = false
 
-  ' read category from registry with guard; default "animals"
+  ' Observe poster load statuses for A/B
+  if m.bgA <> invalid then m.bgA.ObserveField("loadStatus", "onPosterLoad")
+  if m.bgB <> invalid then m.bgB.ObserveField("loadStatus", "onPosterLoad")
+
+  ' Read saved category from registry (default animals)
   m.category = "animals"
   sec = CreateObject("roRegistrySection", "FaithSaver")
   if sec <> invalid then
@@ -46,53 +58,32 @@ sub init()
   end if
   FSLogSaver("Registry category=" + m.category)
 
-  mode = LCase(ToStr(m.top.mode))
-  if mode = "preview" then
-    FSLogSaver("Mode=preview; offline only")
-    if m.hint <> invalid then m.hint.visible = true
+  ' PRODUCTION saver (we removed preview entry from manifest routing)
+  FSLogSaver("Mode=saver; wiring ImageFeedTask")
 
-    ' explicit offline list (flat)
-    m.offline = [
-      "pkg:/images/offline/animals.jpg",
-      "pkg:/images/offline/default.jpg",
-      "pkg:/images/offline/fall.jpg",
-      "pkg:/images/offline/geology.jpg",
-      "pkg:/images/offline/scenery.jpg",
-      "pkg:/images/offline/space.jpg",
-      "pkg:/images/offline/spring.jpg",
-      "pkg:/images/offline/summer.jpg",
-      "pkg:/images/offline/textures.jpg",
-      "pkg:/images/offline/winter.jpg"
-    ]
-
-    if m.offline.count() > 0 then
-      m.index = 0
-      ShowImage(m.offline[m.index])
-    else
-      FSLogSaver("WARN: no offline images found for preview")
-    end if
-
+  ' Start feed task
+  if m.feed <> invalid then
+    m.feed.category = m.category
+    m.feed.ObserveField("items", "onFeedItems")
+    m.feed.control = "run"
+    FSLogSaver("ImageFeedTask started")
   else
-    FSLogSaver("Mode=saver; wiring ImageFeedTask")
-    if m.feed <> invalid then
-      m.feed.category = m.category
-      m.feed.ObserveField("items", "onFeedItems")
-      m.feed.control = "run"
-      FSLogSaver("ImageFeedTask started")
-    else
-      FSLogSaver("ERROR: feed task node not found")
-    end if
-
-    if m.cycler <> invalid then
-      m.cycler.ObserveField("fire", "onCycle")
-    end if
-
-    ' show first frame (offline category fallback)
-    ShowFirstFrameForCategory(m.category)
+    FSLogSaver("ERROR: feed task node not found")
   end if
+
+  ' Timer (30s standard)
+  if m.cycler <> invalid then
+    m.cycler.ObserveField("fire", "onCycle")
+    m.cycler.duration = 30   ' seconds
+  end if
+
+  ' Show an immediate offline-first frame for the category
+  ShowFirstFrameForCategory(m.category)
 end sub
 
-' Show initial offline frame for a chosen category (e.g., animals → animals.jpg)
+' =========================
+' Offline first frame (by category)
+' =========================
 sub ShowFirstFrameForCategory(cat as string)
   localMap = {
     "animals":  "pkg:/images/offline/animals.jpg",
@@ -115,84 +106,132 @@ sub ShowFirstFrameForCategory(cat as string)
   ShowImage(uri)
 end sub
 
-' Handle ImageFeedTask completion (production-only)
+' =========================
+' Feed callback (production)
+' =========================
 sub onFeedItems(evt as Object)
   if evt = invalid then return
   arr = evt.GetData()
   if type(arr) <> "roArray" or arr.count() = 0 then
-    FSLogSaver("Feed returned empty; using offline fallback rotation only")
+    FSLogSaver("Feed returned empty; staying on offline category image")
     return
   end if
 
   m.items = arr
   FSLogSaver("Feed items=" + ToStr(m.items))
 
-  ' Randomize the starting index so we don't always begin at 0
+  ' Pick a deterministic but varied start index without Randomize()/roRandom
   dt = CreateObject("roDateTime")
-  start = (dt.GetSeconds() + dt.GetMinutes() * 3 + dt.GetDayOfMonth() * 7) mod m.items.count()
+  start = dt.AsSeconds() mod m.items.count()
   m.index = start
   FSLogSaver("Start index=" + StrI(m.index))
 
-  ' IMPORTANT: do NOT call ShowImage() here.
-  ' Keep offline frame visible until first timer tick.
+  ' Start the cycler; first online image will appear on first tick
   if m.cycler <> invalid then
     m.cycler.control = "start"
     FSLogSaver("Cycler started (first online image will appear on first tick)")
   end if
 end sub
 
-' Timer: rotate images in saver mode (online list if available)
+' =========================
+' Timer tick → advance slideshow
+' =========================
 sub onCycle()
   if m.items <> invalid and m.items.count() > 0 then
-    ShowImage(m.items[m.index])
     m.index = (m.index + 1) mod m.items.count()
+    ShowImage(m.items[m.index])
   else
-    ' no items: stay on first frame (already shown)
+    ' No online items; remain on the offline first frame
   end if
 end sub
 
-' Swap double-buffered background with a quick visible flip
+' =========================
+' Double-buffered image load
+' =========================
 sub ShowImage(uri as string)
   if uri = invalid or uri = "" then return
-  target = invalid
+
+  ' Decide which poster to target (flip the non-active one)
+  targetPoster = invalid
+  targetId = ""
   if m.activeIsA then
-    target = m.bgB
+    targetPoster = m.bgB : targetId = "B"
   else
-    target = m.bgA
+    targetPoster = m.bgA : targetId = "A"
   end if
-  if target <> invalid then
-    FSLogSaver("Load: " + uri)
-    target.uri = uri
-    target.visible = true
+
+  if targetPoster = invalid then return
+
+  m.pendingTarget = targetId
+  m.pendingUri    = uri
+  m.flipArmed     = true
+
+  FSLogSaver("Request load → " + uri + " (to bg" + targetId + ")")
+  targetPoster.uri = uri
+  targetPoster.visible = true
+end sub
+
+' Safe handler for poster loadStatus events (works across firmware variants)
+sub onPosterLoad(evt as Object)
+  if evt = invalid then return
+  status = LCase(ToStr(evt.GetData()))
+
+  ' ignore if we have no pending target
+  if m.pendingTarget = invalid or m.pendingUri = "" then return
+
+  ' figure out which Poster fired the event (node OR string id)
+  nodeId$ = ""
+  if evt.GetNode() <> invalid then
+    if type(evt.GetNode()) = "roSGNode" then
+      nodeObj = evt.GetNode()
+      nodeId$ = LCase(ToStr(nodeObj.id))   ' "bga" / "bgb"
+    else
+      nodeId$ = LCase(ToStr(evt.GetNode())) ' some firmware returns id string
+    end if
+  end if
+
+  ' compute expected target id explicitly (no boolean and/or trick)
+  targetId$ = "bgb"
+  if m.pendingTarget = "A" then targetId$ = "bga"
+
+  ' if the event isn't for our target poster, ignore
+  if nodeId$ <> targetId$ then return
+
+  if status = "ready" then
+    FSLogSaver("Ready → flip to bg" + m.pendingTarget)
+
+    ' flip visibility
     if m.activeIsA then
-      m.bgA.visible = false
+      if m.bgA <> invalid then m.bgA.visible = false
       m.activeIsA = false
     else
-      m.bgB.visible = false
+      if m.bgB <> invalid then m.bgB.visible = false
       m.activeIsA = true
     end if
+
+    ' clear pending state
+    m.pendingTarget = invalid
+    m.pendingUri    = ""
+    m.flipArmed     = false
+
+  else if status = "failed" then
+    FSLogSaver("ERROR: decode failed for " + m.pendingUri)
+    m.pendingTarget = invalid
+    m.pendingUri    = ""
+    m.flipArmed     = false
+  else
+    ' "loading" or other transitional states → ignore
   end if
 end sub
 
-' Key handling
+' =========================
+' Key handling (saver)
+' =========================
 function onKeyEvent(key as string, press as boolean) as boolean
   if not press then return false
-  mode = LCase(ToStr(m.top.mode))
 
-  if mode = "saver" then
-    ' Published screensaver behavior: Back exits saver
-    if key = "back" then
-      m.top.close = true
-      return true
-    end if
-    ' Swallow other keys; saver should not navigate
-    return true
-  else
-    ' (Preview removed; block here if ever re-enabled)
-    if key = "back" or key = "home" then
-      m.top.close = true
-      return true
-    end if
-    return false
-  end if
+  ' In dev sideload, we swallow all keys to avoid accidental exit behavior differences
+  if key = "back" or key = "home" then return true
+
+  return true
 end function
