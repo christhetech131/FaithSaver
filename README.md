@@ -17,10 +17,10 @@ FaithSaver is a Roku screensaver that displays faith‑based photography and scr
 
 ### Modes
 - **Production Saver (only)**
-  - No navigation. Back/Home keys are swallowed by the saver.
+  - No navigation. Back/Home keys are swallowed by the saver (this may appear different in sideloaded dev sessions).
   - Reads the selected **category** from the Roku Registry (`FaithSaver:category`).
   - Immediately shows an **offline fallback image** for that category (from `pkg:/images/offline/*.jpg`).
-  - Starts an **online image feed** that lists the image files in the project’s GitHub repo under `/<category>/*.jpg` and shuffles them per run.
+  - Starts an **online image feed** that lists the image files in the project’s GitHub repo under `/<category>/*.jpg` and randomizes the starting image each run; rotation continues on a timer.
   - Images then rotate on a timer (default **30 seconds**) using a double‑buffered crossfade to avoid black frames.
 
 - **Settings**
@@ -29,10 +29,10 @@ FaithSaver is a Roku screensaver that displays faith‑based photography and scr
   - Saves the selection to Registry (`FaithSaver:category`) and updates the header to show the saved choice.
   - An **About** item opens the About overlay (see below).
 
-> Note: FaithSaver **does not** implement a separate preview mode. Roku’s “Preview” entry uses the same saver scene.
+> Note: FaithSaver **does not** implement a separate preview mode. The Roku “Preview” entry will launch the same saver scene.
 
 ### Categories
-Currently supported keys:
+Currently supported keys (case‑insensitive):  
 `animals`, `fall`, `geology`, `scenery`, `seasonal`, `space`, `spring`, `summer`, `textures`, `winter`
 
 If you pick **Seasonal**, the saver shows the seasonal offline frame and will pull from the `/seasonal` folder online (if populated).
@@ -41,13 +41,14 @@ If you pick **Seasonal**, the saver shows the seasonal offline frame and will pu
 
 ## Online Image Source (GitHub)
 
-The production saver fetches URLs using the GitHub Contents API for this repo:
+The production saver fetches image URLs using the GitHub Contents API for this repo:
+
 - Owner: `christhetech131`
 - Repo: `FaithSaver`
 - Branch: `main`
-- Path per category: `/<category>/*.jpg`
+- Path per category: `/<category>/*.jpg` (no subfolders)
 
-Only files at the **category root** are included (no subfolders). The feed client filters for `.jpg`, `.jpeg`, or `.png` file names and shuffles them once per run. It also supports ETag caching to keep bandwidth low when images haven’t changed.
+Only files at the **category root** are included. The client filters for `.jpg`, `.jpeg`, or `.png` names. To keep bandwidth low, the feed fetch is compact and performed once per run; the starting image index is randomized so the order isn’t repetitive across runs.
 
 **Tip:** If you are adding a new image to be used online, place it in the appropriate category folder at the repository root (e.g., `/spring/new-image.jpg`).
 
@@ -57,8 +58,8 @@ Only files at the **category root** are included (no subfolders). The feed clien
 
 We accept **two types** of contributions:
 
-1) **Finished images** with verses already designed on the artwork.  
-2) **Raw photographs** where we will add verses and typographic treatment before approval.
+1. **Finished images** with verses already designed on the artwork.  
+2. **Raw photographs** where we will add verses and typographic treatment before approval.
 
 ### Submit via Dropbox (no account required)
 - **File Request Link:** https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA  
@@ -83,23 +84,23 @@ Upload your files there. The maintainer moves approved images into the proper ca
 - Highlight color: `0x103A57FF` (Roku RGBA)
 - Focused text: `0xFFFFFFFF`, Unfocused text: `0x000000FF`
 - Title shows: “FaithSaver Settings — Saved: <current selection>”
+- A navy divider line separates the menu header from items, and another before the **About** section.
 - **About** item at the bottom of the list
 
 ### About Overlay
-- Left: large image card (e.g., `pkg:/images/about/FaithSaver-About-1920x1080.png`)
-- Right: QR and descriptive text (long text wraps)
-- A README link is displayed so users can visit on their phone
-- Optional QR asset at `pkg:/images/faithsaverqr.png`
+- **Left:** large text panel with wrapped description and project info
+- **Right:** QR code panel (uses `pkg:/images/faithsaverqr.png`) and README URL so users can visit on their phone
+- The main about image asset (optional): `pkg:/images/about/FaithSaver-About-1920x1080.png`
 
 ---
 
 ## Transitions & Rotation
 
 - Double‑buffered **crossfade** implemented with two Posters (`bgA`, `bgB`) and a short fade:
-  - `bgNext.opacity` fades from 0 to 1
-  - `bgCurrent.opacity` fades from 1 to 0
-  - Swap active buffer after the fade completes
-- Rotation **interval** default is **30 seconds** (configurable in `components/SaverScene.xml` Timer `duration` value).
+  - `bgNext.opacity` fades from 0 → 1
+  - `bgCurrent.opacity` fades from 1 → 0
+  - Active buffer flips after the fade completes
+- Rotation **interval** default is **30 seconds** (configured via Timer in `components/SaverScene.xml`).
 
 ---
 
@@ -112,12 +113,12 @@ Upload your files there. The maintainer moves approved images into the proper ca
    - `/components/ImageFeedTask.xml`, `/components/ImageFeedTask.brs`
    - `/components/SettingsScene.xml`, `/components/SettingsScene.brs`
    - `/components/AboutOverlay.xml`, `/components/AboutOverlay.brs`
-   - `/images/FaithSaver-BrandTile-147x113.jpg`
+   - `/images/FaithSaver-BrandTile-147x113.jpg` (opaque)
    - `/images/FaithSaver-Splash-1920x1080.jpg`
    - `/images/FaithSaver-Splash-1280x720.jpg`
    - `/images/offline/*.jpg` (one per category fallback)
 
-2) Pack into a zip and side‑load to your Roku dev device.  
+2) Zip the project and side‑load to your Roku dev device.  
    Watch telnet logs at `telnet <roku-ip> 8085` for diagnostics.
 
 3) In Settings, select a category and hit **OK** to save.  
@@ -138,7 +139,7 @@ mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
 mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-540x405.jpg
 
 splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
-splash_screen_hd =pkg:/images/FaithSaver-Splash-1280x720.jpg
+splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
 
 ui_brand_tile=pkg:/images/FaithSaver-BrandTile-147x113.jpg
 search_button_logo=pkg:/images/FaithSaver-SearchButton-165x60.png
@@ -151,15 +152,16 @@ run_screensaver_settings=RunScreenSaverSettings
 screensaver_title=FaithSaver
 ```
 
-> Ensure `FaithSaver-BrandTile-147x113.jpg` is **opaque** and filenames match exactly (case‑sensitive on some toolchains).
+> Ensure `FaithSaver-BrandTile-147x113.jpg` is **opaque** and filenames match exactly.
 
 ---
 
 ## Troubleshooting
 
-- **No online rotation:** Verify your Roku has network access and that the GitHub category folder has `.jpg` images at the root.  
-- **Crashes in dev mode when cycling:** Some firmware builds are stricter with networking APIs in dev sessions. The app is coded to use broadly compatible `roUrlTransfer` calls (no unsupported methods). If you still see issues, test by letting the screensaver auto‑launch from the Home screen.
-- **Black frames between images:** The app now uses a crossfade. If you notice abrupt transitions, confirm both Posters are present and `animationDurationMs` is set in the scene (see code).
+- **No online rotation:** Verify your Roku has network access and that the GitHub category folder has `.jpg` images at the root (no subfolders).  
+- **Crashes / hangs in dev sessions:** Some firmware builds behave differently while sideloaded. Let the saver auto‑start from the Home screen to validate behavior closer to production.  
+- **Black frames between images:** Confirm both Posters exist and the crossfade animation is enabled in the Saver scene.  
+- **Back button:** In production savers, Roku generally exits on Back. In dev‑sideload sessions, behavior may differ; the saver swallows keys to avoid accidental exits during rotation.
 
 ---
 
@@ -175,4 +177,3 @@ screensaver_title=FaithSaver
 - Email: **faithsaver131@gmail.com**
 - Project site: https://christhetech131.github.io/FaithSaver/
 - Repository: https://github.com/christhetech131/FaithSaver/
-
