@@ -2,7 +2,7 @@ title=FaithSaver
 subtitle=Faith-based photo screensaver
 major_version=1
 minor_version=0
-build_version=0
+build_version=1
 
 ' app tiles (must exist at these EXACT pkg paths)
 mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
@@ -22,7 +22,6 @@ ui_resolutions=fhd
 ' REQUIRED entry points
 run_screensaver=RunScreenSaver
 run_screensaver_settings=RunScreenSaverSettings
-run_screensaver_preview=RunScreenSaverPreview
 
 ' identify as a screensaver
 screensaver_title=FaithSaver

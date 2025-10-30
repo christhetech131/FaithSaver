@@ -1,5 +1,5 @@
 ' ImageFeedTask.brs — GitHub Contents fetch (firmware-agnostic)
-' Fetches /<category> from repo root, filters images, shuffles with a custom LCG, returns URLs.
+' Fetches /<category> from repo root, filters images, returns URLs in API order (no RNG).
 
 sub init()
   m.top.functionName = "runTask"
@@ -57,7 +57,7 @@ sub runTask()
     return
   end if
 
-  ShuffleArray(files)
+  ' NO SHUFFLE: keep deterministic order; Saver picks a time-based start index and cycles.
   m.top.items = files
   FSLogFeed("OK items=" + StrI(files.count()))
 end sub
@@ -106,29 +106,6 @@ function ParseJsonSafe(s as dynamic) as dynamic
   j = ParseJson(s)
   return j
 end function
-
-' Fisher–Yates using a simple LCG (no Randomize/Rnd/roRandom required)
-sub ShuffleArray(arr as object)
-  c = arr.count()
-  if c <= 1 then return
-
-  ' Seed from current time (seconds + milliseconds if available)
-  dt = CreateObject("roDateTime")
-  seed = dt.AsSeconds()
-  ' LCG constants (glibc style)
-  a = 1103515245
-  m = 2147483648 ' 2^31
-  inc = 12345
-
-  i = c - 1
-  while i > 0
-    seed = (a * seed + inc) mod m
-    ' Convert to an index 0..i
-    j = seed mod (i + 1)
-    tmp = arr[i] : arr[i] = arr[j] : arr[j] = tmp
-    i = i - 1
-  end while
-end sub
 
 function JoinFirstN(a as object, n as integer) as string
   if a = invalid then return ""

@@ -13,7 +13,7 @@ end sub
 ' --- Screensaver entry (Roku calls this when the saver actually runs) ---
 sub RunScreenSaver()
     FSLogMain("RunScreenSaver: enter")
-    ShowSaver(false) ' production
+    ShowSaver() ' production
     FSLogMain("RunScreenSaver: exit")
 end sub
 
@@ -51,12 +51,12 @@ end sub
 ' --- Preview launcher (DEV) — intentionally routes to production saver (no separate preview) ---
 sub RunScreenSaverPreview()
     FSLogMain("RunScreenSaverPreview: enter (routes to production saver)")
-    ShowSaver(false) ' no separate preview behavior by design
+    ShowSaver() ' no separate preview behavior by design
     FSLogMain("RunScreenSaverPreview: exit")
 end sub
 
 ' --- Common saver host ---
-sub ShowSaver(isPreview as boolean)
+sub ShowSaver()
     screen = CreateObject("roSGScreen")
     port   = CreateObject("roMessagePort")
     screen.SetMessagePort(port)

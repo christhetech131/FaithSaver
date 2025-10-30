@@ -1,4 +1,4 @@
-' *********** FaithSaver — SaverScene.brs (full file) ***********
+' *********** FaithSaver — SaverScene.brs (first=fade, slower slide, hardened) ***********
 
 sub FSLogSaver(msg as string)
   print "[FaithSaver][Saver] "; ToStr(msg)
@@ -33,17 +33,18 @@ sub init()
   ' Scene graph nodes
   m.bgA    = m.top.findNode("bgA")
   m.bgB    = m.top.findNode("bgB")
-  m.cycler = m.top.findNode("cycler")   ' Timer
+  m.cycler = m.top.findNode("cycler")   ' Timer (duration set in XML)
   m.feed   = m.top.findNode("feed")     ' ImageFeedTask
   m.hint   = m.top.findNode("previewHint") ' may be invalid
 
   ' State
-  m.activeIsA     = true
+  m.activeIsA     = true        ' which buffer is currently live (A starts live)
   m.index         = 0
-  m.items         = CreateObject("roArray", 0, true) ' online items when available
-  m.pendingTarget = invalid   ' "A" or "B" when a load is in-flight
+  m.items         = CreateObject("roArray", 0, true)
+  m.pendingTarget = invalid     ' "A" or "B" when a load is in-flight
   m.pendingUri    = ""
   m.flipArmed     = false
+  m.didFirstTransition = false  ' <-- ensure first transition is fade-in
 
   ' Observe poster load statuses for A/B
   if m.bgA <> invalid then m.bgA.ObserveField("loadStatus", "onPosterLoad")
@@ -58,7 +59,7 @@ sub init()
   end if
   FSLogSaver("Registry category=" + m.category)
 
-  ' PRODUCTION saver (we removed preview entry from manifest routing)
+  ' PRODUCTION saver (single path)
   FSLogSaver("Mode=saver; wiring ImageFeedTask")
 
   ' Start feed task
@@ -71,14 +72,86 @@ sub init()
     FSLogSaver("ERROR: feed task node not found")
   end if
 
-  ' Timer (30s standard)
+  ' Timer: observe fires (duration comes from XML; do not override here)
   if m.cycler <> invalid then
     m.cycler.ObserveField("fire", "onCycle")
-    m.cycler.duration = 30   ' seconds
   end if
 
-  ' Show an immediate offline-first frame for the category
+  ' React to visibility to pause/resume the cycler
+  m.top.ObserveField("visible", "onVisibleChanged")
+
+  ' Create Animation nodes for transitions
+  SetupTransitions()
+
+  ' Show an immediate offline-first frame for the category (via the standard path)
   ShowFirstFrameForCategory(m.category)
+end sub
+
+' =========================
+' Transition Animations (reusable)
+' =========================
+sub SetupTransitions()
+  ' Fade (cross-fade): 350ms
+  m.animFade = CreateObject("roSGNode", "Animation")
+  m.animFade.duration = 0.35 : m.animFade.repeat = false
+
+  m.fadeIn = CreateObject("roSGNode", "FloatFieldInterpolator")
+  m.fadeIn.key = [0.0, 1.0] : m.fadeIn.keyValue = [0.0, 1.0]
+  m.fadeIn.fieldToInterp = "bgA.opacity" ' reassigned per transition
+
+  m.fadeOut = CreateObject("roSGNode", "FloatFieldInterpolator")
+  m.fadeOut.key = [0.0, 1.0] : m.fadeOut.keyValue = [1.0, 0.0]
+  m.fadeOut.fieldToInterp = "bgB.opacity" ' reassigned per transition
+
+  m.animFade.AppendChild(m.fadeIn) : m.animFade.AppendChild(m.fadeOut)
+  m.top.AppendChild(m.animFade)
+
+  ' Fade-in (incoming only) for the very first frame: 600ms
+  m.animFadeSingle = CreateObject("roSGNode", "Animation")
+  m.animFadeSingle.duration = 0.6 : m.animFadeSingle.repeat = false
+
+  m.fadeInOnly = CreateObject("roSGNode", "FloatFieldInterpolator")
+  m.fadeInOnly.key = [0.0, 1.0] : m.fadeInOnly.keyValue = [0.0, 1.0]
+  m.fadeInOnly.fieldToInterp = "bgA.opacity"  ' reassigned to incoming
+
+  m.animFadeSingle.AppendChild(m.fadeInOnly)
+  m.top.AppendChild(m.animFadeSingle)
+
+  ' Slide/Push (left): **slower** 2000ms
+  m.animSlide = CreateObject("roSGNode", "Animation")
+  m.animSlide.duration = 2.00 : m.animSlide.repeat = false
+
+  m.inXY  = CreateObject("roSGNode", "Vector2DFieldInterpolator")
+  m.inXY.key = [0.0, 1.0] : m.inXY.keyValue = [[1920, 0], [0, 0]]
+  m.inXY.fieldToInterp = "bgA.translation" ' reassigned
+
+  m.outXY = CreateObject("roSGNode", "Vector2DFieldInterpolator")
+  m.outXY.key = [0.0, 1.0] : m.outXY.keyValue = [[0, 0], [-1920, 0]]
+  m.outXY.fieldToInterp = "bgB.translation" ' reassigned
+
+  m.animSlide.AppendChild(m.inXY) : m.animSlide.AppendChild(m.outXY)
+  m.top.AppendChild(m.animSlide)
+
+  ' Zoom (quick ease-in with fade): 700ms
+  m.animZoom = CreateObject("roSGNode", "Animation")
+  m.animZoom.duration = 0.70 : m.animZoom.repeat = false
+
+  m.zoomInOpacity = CreateObject("roSGNode", "FloatFieldInterpolator")
+  m.zoomInOpacity.key = [0.0, 1.0] : m.zoomInOpacity.keyValue = [0.0, 1.0]
+  m.zoomInOpacity.fieldToInterp = "bgA.opacity" ' reassigned
+
+  m.zoomOutOpacity = CreateObject("roSGNode", "FloatFieldInterpolator")
+  m.zoomOutOpacity.key = [0.0, 1.0] : m.zoomOutOpacity.keyValue = [1.0, 0.0]
+  m.zoomOutOpacity.fieldToInterp = "bgB.opacity" ' reassigned
+
+  m.zoomScale = CreateObject("roSGNode", "Vector2DFieldInterpolator")
+  m.zoomScale.key = [0.0, 1.0] : m.zoomScale.keyValue = [[0.98, 0.98], [1.0, 1.0]]
+  m.zoomScale.fieldToInterp = "bgA.scale" ' reassigned
+
+  m.animZoom.AppendChild(m.zoomInOpacity)
+  m.animZoom.AppendChild(m.zoomOutOpacity)
+  m.animZoom.AppendChild(m.zoomScale)
+  m.top.AppendChild(m.animZoom)
 end sub
 
 ' =========================
@@ -120,13 +193,13 @@ sub onFeedItems(evt as Object)
   m.items = arr
   FSLogSaver("Feed items=" + ToStr(m.items))
 
-  ' Pick a deterministic but varied start index without Randomize()/roRandom
+  ' Deterministic start index (no RNG)
   dt = CreateObject("roDateTime")
   start = dt.AsSeconds() mod m.items.count()
+  if start < 0 then start = 0
   m.index = start
   FSLogSaver("Start index=" + StrI(m.index))
 
-  ' Start the cycler; first online image will appear on first tick
   if m.cycler <> invalid then
     m.cycler.control = "start"
     FSLogSaver("Cycler started (first online image will appear on first tick)")
@@ -141,7 +214,7 @@ sub onCycle()
     m.index = (m.index + 1) mod m.items.count()
     ShowImage(m.items[m.index])
   else
-    ' No online items; remain on the offline first frame
+    ' No online items; remain on offline first frame
   end if
 end sub
 
@@ -151,7 +224,7 @@ end sub
 sub ShowImage(uri as string)
   if uri = invalid or uri = "" then return
 
-  ' Decide which poster to target (flip the non-active one)
+  ' Decide which poster to target (load into the non-live one)
   targetPoster = invalid
   targetId = ""
   if m.activeIsA then
@@ -159,57 +232,63 @@ sub ShowImage(uri as string)
   else
     targetPoster = m.bgA : targetId = "A"
   end if
-
   if targetPoster = invalid then return
 
+  ' Baseline reset on the target buffer for clean transitions
+  targetPoster.opacity = 0.0
+  targetPoster.translation = [0, 0]
+  targetPoster.scale = [1.0, 1.0]
+  targetPoster.visible = true
+
+  ' Load
   m.pendingTarget = targetId
   m.pendingUri    = uri
   m.flipArmed     = true
 
   FSLogSaver("Request load → " + uri + " (to bg" + targetId + ")")
   targetPoster.uri = uri
-  targetPoster.visible = true
 end sub
 
-' Safe handler for poster loadStatus events (works across firmware variants)
+' =========================
+' Poster load handler
+' =========================
 sub onPosterLoad(evt as Object)
   if evt = invalid then return
   status = LCase(ToStr(evt.GetData()))
 
-  ' ignore if we have no pending target
   if m.pendingTarget = invalid or m.pendingUri = "" then return
 
-  ' figure out which Poster fired the event (node OR string id)
+  ' Which node fired?
   nodeId$ = ""
   if evt.GetNode() <> invalid then
     if type(evt.GetNode()) = "roSGNode" then
       nodeObj = evt.GetNode()
       nodeId$ = LCase(ToStr(nodeObj.id))   ' "bga" / "bgb"
     else
-      nodeId$ = LCase(ToStr(evt.GetNode())) ' some firmware returns id string
+      nodeId$ = LCase(ToStr(evt.GetNode()))
     end if
   end if
 
-  ' compute expected target id explicitly (no boolean and/or trick)
-  targetId$ = "bgb"
-  if m.pendingTarget = "A" then targetId$ = "bga"
-
-  ' if the event isn't for our target poster, ignore
-  if nodeId$ <> targetId$ then return
+  ' Expected target id
+  expected$ = "bgb" : if m.pendingTarget = "A" then expected$ = "bga"
+  if nodeId$ <> expected$ then return
 
   if status = "ready" then
-    FSLogSaver("Ready → flip to bg" + m.pendingTarget)
-
-    ' flip visibility
-    if m.activeIsA then
-      if m.bgA <> invalid then m.bgA.visible = false
-      m.activeIsA = false
-    else
-      if m.bgB <> invalid then m.bgB.visible = false
-      m.activeIsA = true
+    ' Transition select: first is ALWAYS FADE-IN; then rotate (0=fade,1=slide,2=zoom)
+    first = (m.didFirstTransition = false)
+    mode = 0
+    if not first then
+      dt = CreateObject("roDateTime")
+      mode = (dt.AsSeconds() + m.index) mod 3
     end if
 
-    ' clear pending state
+    StartTransition(mode, first)
+    m.didFirstTransition = true  ' lock in so slide never happens first
+
+    ' Toggle which buffer is live AFTER starting the animation
+    m.activeIsA = not m.activeIsA
+
+    ' Clear pending
     m.pendingTarget = invalid
     m.pendingUri    = ""
     m.flipArmed     = false
@@ -220,7 +299,101 @@ sub onPosterLoad(evt as Object)
     m.pendingUri    = ""
     m.flipArmed     = false
   else
-    ' "loading" or other transitional states → ignore
+    ' loading, etc → ignore
+  end if
+end sub
+
+' =========================
+' Start one of the 3 transitions
+' =========================
+sub StartTransition(mode as integer, isFirst as boolean)
+  ' Determine incoming/outgoing ids based on which was live BEFORE toggle.
+  incomingId$ = "bgB" : outgoingId$ = "bgA"
+  if not m.activeIsA then
+    incomingId$ = "bgA" : outgoingId$ = "bgB"
+  end if
+
+  ' Ensure both visible during transition
+  if incomingId$ = "bgA" then m.bgA.visible = true else m.bgB.visible = true
+  if outgoingId$ = "bgA" then m.bgA.visible = true else m.bgB.visible = true
+
+  if mode = 0 then
+    ' ----- Fade -----
+    if isFirst then
+      ' First transition = FADE-IN (incoming only)
+      if incomingId$ = "bgA" then
+        m.fadeInOnly.fieldToInterp = "bgA.opacity"
+        m.bgA.opacity = 0.0
+      else
+        m.fadeInOnly.fieldToInterp = "bgB.opacity"
+        m.bgB.opacity = 0.0
+      end if
+      m.animFadeSingle.control = "stop" : m.animFadeSingle.control = "start"
+      FSLogSaver("Transition = FADE (first, incoming only)")
+    else
+      ' Regular cross-fade
+      if incomingId$ = "bgA" then
+        m.fadeIn.fieldToInterp  = "bgA.opacity"
+        m.fadeOut.fieldToInterp = "bgB.opacity"
+        m.bgA.opacity = 0.0 : m.bgB.opacity = 1.0
+      else
+        m.fadeIn.fieldToInterp  = "bgB.opacity"
+        m.fadeOut.fieldToInterp = "bgA.opacity"
+        m.bgB.opacity = 0.0 : m.bgA.opacity = 1.0
+      end if
+      m.animFade.control = "stop" : m.animFade.control = "start"
+      FSLogSaver("Transition = FADE")
+    end if
+
+  else if mode = 1 then
+    ' ----- Slide / Push left (slower) -----
+    if incomingId$ = "bgA" then
+      m.inXY.fieldToInterp  = "bgA.translation"
+      m.outXY.fieldToInterp = "bgB.translation"
+      m.bgA.translation = [1920, 0] : m.bgB.translation = [0, 0]
+      m.bgA.opacity = 1.0 : m.bgB.opacity = 1.0
+    else
+      m.inXY.fieldToInterp  = "bgB.translation"
+      m.outXY.fieldToInterp = "bgA.translation"
+      m.bgB.translation = [1920, 0] : m.bgA.translation = [0, 0]
+      m.bgB.opacity = 1.0 : m.bgA.opacity = 1.0
+    end if
+    m.animSlide.control = "stop" : m.animSlide.control = "start"
+    FSLogSaver("Transition = SLIDE")
+
+  else
+    ' ----- Zoom -----
+    if incomingId$ = "bgA" then
+      m.zoomInOpacity.fieldToInterp  = "bgA.opacity"
+      m.zoomOutOpacity.fieldToInterp = "bgB.opacity"
+      m.zoomScale.fieldToInterp      = "bgA.scale"
+      m.bgA.opacity = 0.0 : m.bgB.opacity = 1.0
+      m.bgA.scale = [0.98, 0.98]
+    else
+      m.zoomInOpacity.fieldToInterp  = "bgB.opacity"
+      m.zoomOutOpacity.fieldToInterp = "bgA.opacity"
+      m.zoomScale.fieldToInterp      = "bgB.scale"
+      m.bgB.opacity = 0.0 : m.bgA.opacity = 1.0
+      m.bgB.scale = [0.98, 0.98]
+    end if
+    m.animZoom.control = "stop" : m.animZoom.control = "start"
+    FSLogSaver("Transition = ZOOM")
+  end if
+end sub
+
+' =========================
+' Visibility handling — pause/resume cycler
+' =========================
+sub onVisibleChanged()
+  if m.cycler = invalid then return
+  if m.top.visible = true then
+    if m.items <> invalid and m.items.count() > 0 then
+      m.cycler.control = "start"
+      FSLogSaver("Visible=TRUE → cycler resumed")
+    end if
+  else
+    m.cycler.control = "stop"
+    FSLogSaver("Visible=FALSE → cycler paused")
   end if
 end sub
 
@@ -230,8 +403,8 @@ end sub
 function onKeyEvent(key as string, press as boolean) as boolean
   if not press then return false
 
-  ' In dev sideload, we swallow all keys to avoid accidental exit behavior differences
-  if key = "back" or key = "home" then return true
+  ' Swallow Back in dev; Roku handles Home/Back on published savers
+  if key = "back" then return true
 
-  return true
+  return false
 end function

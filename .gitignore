@@ -16,6 +16,7 @@ desktop.ini
 *.rar
 *.tar
 *.tar.gz
+*.pkg
 
 # Image source/editing files (keep only exported JPG/WEBP/PNG)
 *.psd

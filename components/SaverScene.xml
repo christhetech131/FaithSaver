@@ -22,8 +22,8 @@
            visible="false"
            text="Press UP/DOWN to cycle • BACK to exit" />
 
-    <!-- 30s cycler timer (milliseconds) -->
-    <Timer id="cycler" repeat="true" duration="15" />
+    <!-- 30s cycler timer (seconds) -->
+    <Timer id="cycler" repeat="true" duration="30" />
 
     <!-- Online feed task -->
     <ImageFeedTask id="feed" />
