@@ -1,11 +1,11 @@
 ' SettingsScene — Labels + highlight bar; registry save; About overlay
 
 sub init()
-  m.menu       = m.top.findNode("menu")
-  m.title      = m.top.findNode("title")
-  m.hl         = m.top.findNode("hl")
-  m.sepHeader  = m.top.findNode("sepHeader")
-  m.sepAbout   = m.top.findNode("sepAbout")
+  m.menu        = m.top.findNode("menu")
+  m.title       = m.top.findNode("title")
+  m.hl          = m.top.findNode("hl")
+  m.sepHeader   = m.top.findNode("sepHeader")
+  m.sepAbout    = m.top.findNode("sepAbout")
   m.overlayHost = m.top.findNode("overlayHost")
 
   ' colors (0xRRGGBBAA)
@@ -42,27 +42,28 @@ sub init()
   ' initial focus = saved
   m.focus = m.selected
 
-  ' position separator above About row
+  ' separator above About row
   if m.sepAbout <> invalid then
     aboutY = 144 + (m.rowH * (m.titles.count() - 1)) - 8
     m.sepAbout.translation = [96, aboutY]
     m.sepAbout.visible = true
   end if
 
-  ' header: ensure visible and on top
+  ' header
   if m.sepHeader <> invalid then m.sepHeader.visible = true
   if m.title <> invalid then
     m.title.visible = true
     m.title.opacity = 1.0
   end if
 
-  ' set header text before first paint
   UpdateTitle()
-
   Paint()
 
   m.top.focusable = true
   m.top.setFocus(true)
+
+  ' NOTE: Do NOT call m.top.signalBeacon("AppLaunchComplete") here.
+  ' The system emits AppLaunchComplete automatically when the first frame renders.
 
   print "SettingsScene.init"
   print "Saved key: " ; m.savedKey
@@ -201,22 +202,25 @@ function onKeyEvent(key as string, press as boolean) as boolean
   key = LCase(key)
   print "[FaithSaver][Settings] onKeyEvent key=" + key
 
+  ' Block keys while About overlay is open
   if m.overlayHost <> invalid and m.overlayHost.visible and m.overlayHost.getChildCount() > 0 then
     return true
   end if
 
+  c = m.titles.count()
+
   if key = "up" then
-    if m.focus > 0 then
-      m.focus = m.focus - 1
-      Paint()
-    end if
+    ' wrap-around navigation
+    m.focus = (m.focus + c - 1) mod c
+    Paint()
     return true
+
   else if key = "down" then
-    if m.focus < m.titles.count() - 1 then
-      m.focus = m.focus + 1
-      Paint()
-    end if
+    ' wrap-around navigation
+    m.focus = (m.focus + 1) mod c
+    Paint()
     return true
+
   else if key = "ok" then
     if m.keys[m.focus] = "about" then
       ShowAbout()
@@ -238,6 +242,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     UpdateTitle()
     Paint()
     return true
+
   else if key = "back" then
     return false
   end if
