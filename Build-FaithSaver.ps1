@@ -55,7 +55,7 @@ try {
     Copy-Tree $srcDir (Join-Path $dist "source")
     Copy-Tree $cmpDir (Join-Path $dist "components")
 
-    # ---------- Images: copy everything except .ai/.xcf; normalize core JPEGs ----------
+# ---------- Images: copy everything except .ai/.xcf and 3 extras; normalize core JPEGs ----------
     $imagesRoot = Join-Path $root "images"
     if (-not (Test-Path $imagesRoot)) { throw "Missing required folder: images" }
     $imagesOut = Join-Path $dist "images"
@@ -113,7 +113,7 @@ try {
     }
 
     Get-ChildItem $imagesRoot -Recurse -File |
-        Where-Object { $_.Extension -notin @('.ai','.xcf') } |
+        Where-Object { $_.Extension -notin @('.ai','.xcf') -and $_.Name -notin @('FaithSaver-BrandTile-147x113.jpg','FaithSaver-SearchButton-165x60.png','Logo-Full.png') } |
         ForEach-Object {
             $rel = $_.FullName.Substring($imagesRoot.Length).TrimStart('\','/')
             $dst = Join-Path $imagesOut $rel
@@ -137,16 +137,22 @@ try {
     [System.IO.Compression.ZipFile]::CreateFromDirectory($dist, $zipPath)
 
     # ---------- Verify ZIP contains the critical files ----------
-    $expectedMustHave = @(
+        $expectedMustHave = @(
         "manifest",
         "source/main.brs",
         "components/SettingsScene.xml",
         "components/SettingsScene.brs",
         "components/SaverScene.xml",
         "components/SaverScene.brs",
-        "images/FaithSaver-BrandTile-147x113.jpg",
+        "components/AboutOverlay.xml",
+        "components/AboutOverlay.brs",
+        "components/ImageFeedTask.xml",
+        "components/ImageFeedTask.brs",
+        "images/FaithSaver-Poster-290x218.jpg",
+        "images/FaithSaver-Poster-540x405.jpg",
         "images/FaithSaver-Splash-1280x720.jpg",
-        "images/FaithSaver-Splash-1920x1080.jpg"
+        "images/FaithSaver-Splash-1920x1080.jpg",
+        "images/offline/default.jpg"
     )
 
     $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
