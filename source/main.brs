@@ -1,4 +1,4 @@
-' ========== FaithSaver main.brs (screensaver + settings; no in-channel saver) ==========
+' ========== FaithSaver main.brs (channel -> Settings; saver via screensaver entry) ==========
 
 sub FSLogMain(msg as string)
     print "[FaithSaver][Main] " ; msg
@@ -14,50 +14,22 @@ function ToStr(v as dynamic) as string
     return "<" + t + ">"
 end function
 
-' --- Channel entry: SHOW SETTINGS (no in-channel screensaver) ---
-sub RunUserInterface()
-    FSLogMain("RunUserInterface: enter (Settings UI)")
-    RunScreenSaverSettings()
-    FSLogMain("RunUserInterface: exit")
-end sub
-
-' --- System screensaver entry (Roku calls this when saver runs) ---
+'
+' RunScreenSaver – entry from system screensaver
+'
 sub RunScreenSaver()
-    FSLogMain("RunScreenSaver: enter")
-    ShowSaver()
-    FSLogMain("RunScreenSaver: exit")
-end sub
-
-' --- Settings entry (exposed from the device’s Screensavers menu) ---
-sub RunScreenSaverSettings()
-    FSLogMain("RunScreenSaverSettings: enter")
+    FSLogMain("RunScreenSaver: start")
 
     screen = CreateObject("roSGScreen")
-    port   = CreateObject("roMessagePort")
-    screen.SetMessagePort(port)
+    m.port = CreateObject("roMessagePort")
+    screen.SetMessagePort(m.port)
 
-    ' Deep linking events (cert requirement: flag + handler)
-    ' supports_input_launch=1 is in the manifest; this listener satisfies the handler part.
-    input = CreateObject("roInput")
-    input.SetMessagePort(port)   ' 
-
-    scene = screen.CreateScene("SettingsScene")
-    if scene = invalid then
-        FSLogMain("ERROR: SettingsScene failed to create")
-        return
-    end if
-
+    scene = screen.CreateScene("SaverScene")
     screen.Show()
-    scene.setFocus(true)
 
-    ' Certification/perf beacon once the UI is up (emit from a SceneGraph node).
-    ' This is the recommended/working pattern to clear the “AppLaunchComplete” check.
-    scene.signalBeacon("AppLaunchComplete")  ' 
-
-    FSLogMain("Settings screen shown")
-
+    ' Event loop (no deep linking here)
     while true
-        msg = wait(0, port)
+        msg = wait(0, m.port)
 
         if type(msg) = "roSGScreenEvent" and msg.IsScreenClosed() then exit while
 
@@ -65,52 +37,38 @@ sub RunScreenSaverSettings()
             if msg.GetNode() = scene and LCase(msg.GetField()) = "close" then
                 if msg.GetData() = true then exit while
             end if
-
-        else if type(msg) = "roInputEvent" then
-            FSLogMain("Deep link roInputEvent received (Settings)")
-            ' Optional: dl = msg.GetInfo() : FSLogMain("roInput payload=" + ToStr(dl))
-
         end if
     end while
 
-    FSLogMain("RunScreenSaverSettings: exit")
+    FSLogMain("RunScreenSaver: done")
 end sub
 
-' --- Saver host (invoked only by the system screensaver entry) ---
-sub ShowSaver()
+'
+' RunScreenSaverSettings – entry from Settings ▸ Theme ▸ Screensavers ▸ Change settings
+'
+sub RunScreenSaverSettings()
+    FSLogMain("RunScreenSaverSettings: start")
+
     screen = CreateObject("roSGScreen")
-    port   = CreateObject("roMessagePort")
-    screen.SetMessagePort(port)
+    m.port = CreateObject("roMessagePort")
+    screen.SetMessagePort(m.port)
 
-    ' Not strictly needed for a saver, but harmless to keep the roInput hook consistent.
-    input = CreateObject("roInput")
-    input.SetMessagePort(port)
-
-    saver = screen.CreateScene("SaverScene")
-    if saver = invalid then
-        FSLogMain("ERROR: SaverScene failed to create")
-        return
-    end if
-
+    settings = screen.CreateScene("SettingsScene")
     screen.Show()
-    saver.SetFocus(true)
+
+    ' AppLaunchComplete beacon (after first paint)
+    settings.signalBeacon("AppLaunchComplete")
 
     while true
-        msg = wait(0, port)
-
+        msg = wait(0, m.port)
         if type(msg) = "roSGScreenEvent" and msg.IsScreenClosed() then exit while
 
         if type(msg) = "roSGNodeEvent" then
-            if msg.GetNode() = saver and LCase(msg.GetField()) = "close" then
+            if msg.GetNode() = settings and LCase(msg.GetField()) = "close" then
                 if msg.GetData() = true then exit while
             end if
-
-        else if type(msg) = "roInputEvent" then
-            FSLogMain("Deep link roInputEvent received (Saver)")
-            ' No action for a saver; just acknowledging the event is fine.
-
         end if
     end while
 
-    FSLogMain("ShowSaver: done")
+    FSLogMain("RunScreenSaverSettings: done")
 end sub

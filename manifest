@@ -1,27 +1,22 @@
-# Channel details
-title=FaithSaver
-major_version=1
-minor_version=0
-build_version=00100
+# FaithSaver — manifest
 
-# Screensaver entries
 screensaver_title=FaithSaver
+ui_resolutions=fhd
+
+# Store icons / art
+mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
+mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-290x218.jpg
+
+splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
+splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
 
 # Entry points
 run_screensaver=RunScreenSaver
 run_screensaver_settings=RunScreenSaverSettings
 
-# Hide any tile if Roku ever tries to create one
-hidden=1
-supports_input_launch=1
+# Deep linking
 
-# Icons (used by Roku when needed)
-mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-290x218.jpg
-mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
-
-# Resolution
-ui_resolutions=fhd
-
-# Splash (exact size)
-splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
-splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
+# Version (bump before packaging)
+major_version=1
+minor_version=0
+build_version=103

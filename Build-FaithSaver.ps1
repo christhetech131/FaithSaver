@@ -1,172 +1,160 @@
 <#
-Build-FaithSaver.ps1 — FaithSaver
-- Stages to .\dist
-- Copies ALL code under .\source and .\components (recursively)
-- Copies ALL images except .ai/.xcf
-- Normalizes three core JPEGs to exact size/24bpp RGB/baseline
-- Zips CONTENTS of dist so manifest is at ZIP root
-- Verifies required entries; allows extras
+  FaithSaver build & package script
+  Goals:
+   1) Only capture needed files (manifest, source, components, and images *.jpg/*.jpeg/*.png).
+      - Exclude design/source files (.ai, .xcf) and the three extra images.
+   2) Convert JPGs to baseline (non-progressive) to avoid Poster decode stalls.
+   3) Use dist\pkg for staging and output FaithSaver.zip in the repo root.
 #>
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not $PSScriptRoot) {
-    $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-} else {
-    $ScriptRoot = $PSScriptRoot
+# ----- Paths -----
+$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Dist = Join-Path $Root "dist"
+$Pkg  = Join-Path $Dist "pkg"
+$Zip  = Join-Path $Root "FaithSaver.zip"
+
+# ----- Clean dist\pkg -----
+if (Test-Path $Pkg) { Remove-Item $Pkg -Recurse -Force }
+if (-not (Test-Path $Dist)) { New-Item -ItemType Directory -Path $Dist | Out-Null }
+New-Item -ItemType Directory -Path $Pkg | Out-Null
+
+Write-Host "Staging to: $Pkg"
+
+# ----- Copy core files -----
+Copy-Item (Join-Path $Root "manifest")   -Destination $Pkg -Force
+Copy-Item (Join-Path $Root "source")     -Destination $Pkg -Recurse -Force
+Copy-Item (Join-Path $Root "components") -Destination $Pkg -Recurse -Force
+
+# ----- Copy images (only what we need) -----
+$imagesSrc = Join-Path $Root "images"
+$imagesDst = Join-Path $Pkg "images"
+New-Item -ItemType Directory -Path $imagesDst | Out-Null
+
+# Specific image names to exclude (your request)
+$excludeNames = @(
+  'FaithSaver-BrandTile-147x113.jpg',
+  'FaithSaver-SearchButton-165x60.png',
+  'Logo-Full.png'
+)
+
+# Only copy image file types used by the app; drop .ai, .xcf, etc.
+Get-ChildItem $imagesSrc -Recurse -File |
+  Where-Object {
+    ($_.Extension -in @('.jpg', '.jpeg', '.png')) -and
+    ($excludeNames -notcontains $_.Name)
+  } |
+  ForEach-Object {
+    $rel = $_.FullName.Substring($imagesSrc.Length).TrimStart('\','/')
+    $dst = Join-Path $imagesDst $rel
+    $dstDir = Split-Path $dst -Parent
+    if (-not (Test-Path $dstDir)) { New-Item -ItemType Directory -Path $dstDir | Out-Null }
+    Copy-Item $_.FullName $dst -Force
+  }
+
+# Normalize QR filename case (app expects images/faithsaverqr.png)
+$qrLower = Join-Path $imagesDst "faithsaverqr.png"
+if (-not (Test-Path $qrLower)) {
+  $qrAny = Get-ChildItem $imagesDst -Recurse -File -Include FaithSaverQR.png,faithsaverqr.png -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($qrAny) {
+    Copy-Item $qrAny.FullName $qrLower -Force
+    if ($qrAny.FullName -ne $qrLower) { Remove-Item $qrAny.FullName -Force }
+    Write-Host "Normalized QR filename to images/faithsaverqr.png"
+  }
 }
 
-Push-Location $ScriptRoot
+# ----- Convert JPG/JPEG to baseline (non-progressive) -----
+# Uses System.Drawing; default Save() without progressive flags writes baseline JPEG.
+Add-Type -AssemblyName System.Drawing
+
+function Convert-ToBaselineJpeg {
+  param(
+    [Parameter(Mandatory=$true)][string]$InPath,
+    [Parameter(Mandatory=$true)][string]$OutPath,
+    [int]$Quality = 90
+  )
+  $img = [System.Drawing.Image]::FromFile($InPath)
+  try {
+    $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
+    $encps = New-Object System.Drawing.Imaging.EncoderParameters(1)
+    $encps.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, [long]$Quality)
+    $img.Save($OutPath, $codec, $encps)  # baseline JPEG
+  } finally {
+    $img.Dispose()
+  }
+}
+
+Write-Host "Converting JPGs to baseline in /images..."
+Get-ChildItem $imagesDst -Recurse -Include *.jpg,*.jpeg | ForEach-Object {
+  try {
+    $tmp = "$($_.FullName).tmp"
+    Convert-ToBaselineJpeg -InPath $_.FullName -OutPath $tmp -Quality 88
+    Move-Item -Force $tmp $_.FullName
+  } catch {
+    Write-Warning "Baseline conversion failed: $($_.FullName) — $($_.Exception.Message)"
+  }
+}
+
+# ----- Verify must-haves exist in stage -----
+$mustHave = @(
+  "manifest",
+  "source\main.brs",
+  "components\SettingsScene.xml",
+  "components\SettingsScene.brs",
+  "components\SaverScene.xml",
+  "components\SaverScene.brs",
+  "components\AboutOverlay.xml",
+  "components\AboutOverlay.brs",
+  "components\ImageFeedTask.xml",
+  "components\ImageFeedTask.brs",
+  "images\FaithSaver-Poster-290x218.jpg",
+  "images\FaithSaver-Poster-540x405.jpg",
+  "images\FaithSaver-Splash-1280x720.jpg",
+  "images\FaithSaver-Splash-1920x1080.jpg",
+  "images\offline\default.jpg"
+)
+
+$missingStage = @()
+foreach ($rel in $mustHave) {
+  $p = Join-Path $Pkg $rel
+  if (-not (Test-Path $p)) { $missingStage += $rel }
+}
+if ($missingStage.Count -gt 0) {
+  throw "Stage verification failed. Missing:`n$($missingStage -join "`n")"
+}
+
+# ----- Create ZIP in current directory -----
+if (Test-Path $Zip) { Remove-Item $Zip -Force }
+Write-Host "Creating ZIP: $Zip"
+Compress-Archive -Path (Join-Path $Pkg "*") -DestinationPath $Zip -Force
+
+# ----- Verify ZIP entries quickly -----
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zipObj = [System.IO.Compression.ZipFile]::OpenRead($Zip)
 try {
-    $root = Get-Location
-
-    # ---------- Clean staging (dist/) ----------
-    $dist = Join-Path $root "dist"
-    if (Test-Path $dist) { Remove-Item -Recurse -Force $dist }
-    New-Item -ItemType Directory -Path $dist | Out-Null
-
-    function Copy-Tree($srcDir, $dstDir) {
-        if (-not (Test-Path $srcDir)) { throw "Missing required folder: $srcDir" }
-        New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
-        Copy-Item (Join-Path $srcDir '*') $dstDir -Recurse -Force
-    }
-
-    function Copy-SafeFile {
-        param(
-            [Parameter(Mandatory)] [string] $src,
-            [Parameter(Mandatory)] [string] $dstDir,
-            [string] $dstName
-        )
-        if (-not (Test-Path $src)) { throw "Missing required file on disk: $src" }
-        if (-not (Test-Path $dstDir)) { New-Item -ItemType Directory -Path $dstDir -Force | Out-Null }
-        $out = if ($dstName) { Join-Path $dstDir $dstName } else { Join-Path $dstDir (Split-Path $src -Leaf) }
-        Copy-Item $src $out -Force
-    }
-
-    # ---------- Required top-level files ----------
-    $manifestPath = Join-Path $root "manifest"
-    if (-not (Test-Path $manifestPath)) { throw "Missing required file: manifest" }
-    Copy-SafeFile $manifestPath $dist
-
-    # ---------- Code: copy entire /source and /components ----------
-    $srcDir = Join-Path $root "source"
-    $cmpDir = Join-Path $root "components"
-    Copy-Tree $srcDir (Join-Path $dist "source")
-    Copy-Tree $cmpDir (Join-Path $dist "components")
-
-# ---------- Images: copy everything except .ai/.xcf and 3 extras; normalize core JPEGs ----------
-    $imagesRoot = Join-Path $root "images"
-    if (-not (Test-Path $imagesRoot)) { throw "Missing required folder: images" }
-    $imagesOut = Join-Path $dist "images"
-    New-Item -ItemType Directory -Path $imagesOut -Force | Out-Null
-
-    $coreMap = @{
-        "FaithSaver-BrandTile-147x113.jpg" = @{ W=147;  H=113 }
-        "FaithSaver-Splash-1280x720.jpg"   = @{ W=1280; H=720 }
-        "FaithSaver-Splash-1920x1080.jpg"  = @{ W=1920; H=1080 }
-    }
-
-    Add-Type -AssemblyName System.Drawing
-
-    function Convert-ToBaselineJpeg {
-        param(
-            [Parameter(Mandatory)] [string] $inPath,
-            [Parameter(Mandatory)] [string] $outPath,
-            [Parameter(Mandatory)] [int] $width,
-            [Parameter(Mandatory)] [int] $height
-        )
-        $srcImg = [System.Drawing.Image]::FromFile($inPath)
-        try {
-            if (($srcImg.Width -ne $width) -or ($srcImg.Height -ne $height) -or ($srcImg.PixelFormat -eq [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)) {
-                $bmp = New-Object System.Drawing.Bitmap($width, $height, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
-                try {
-                    $gfx = [System.Drawing.Graphics]::FromImage($bmp)
-                    try {
-                        $gfx.SmoothingMode  = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-                        $gfx.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-                        $gfx.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-                        $gfx.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
-                        $rect = New-Object System.Drawing.Rectangle(0,0,$width,$height)
-                        $gfx.DrawImage($srcImg, $rect)
-                    } finally {
-                        $gfx.Dispose()
-                    }
-
-                    $jpegCodec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
-                    $encParams = New-Object System.Drawing.Imaging.EncoderParameters(1)
-                    $encParams.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, [int64]90)
-
-                    $tmp = "$outPath.tmp"
-                    $bmp.Save($tmp, $jpegCodec, $encParams)
-                    if (Test-Path $outPath) { Remove-Item $outPath -Force }
-                    Move-Item $tmp $outPath -Force
-                } finally {
-                    $bmp.Dispose()
-                }
-            } else {
-                Copy-Item $inPath $outPath -Force
-            }
-        } finally {
-            $srcImg.Dispose()
-        }
-    }
-
-    Get-ChildItem $imagesRoot -Recurse -File |
-        Where-Object { $_.Extension -notin @('.ai','.xcf') -and $_.Name -notin @('FaithSaver-BrandTile-147x113.jpg','FaithSaver-SearchButton-165x60.png','Logo-Full.png') } |
-        ForEach-Object {
-            $rel = $_.FullName.Substring($imagesRoot.Length).TrimStart('\','/')
-            $dst = Join-Path $imagesOut $rel
-            $dstDir = Split-Path $dst -Parent
-            if (-not (Test-Path $dstDir)) { New-Item -ItemType Directory -Path $dstDir -Force | Out-Null }
-
-            $name = $_.Name
-            if ($coreMap.ContainsKey($name)) {
-                $spec = $coreMap[$name]
-                Convert-ToBaselineJpeg -inPath $_.FullName -outPath $dst -width $spec.W -height $spec.H
-            } else {
-                Copy-Item $_.FullName $dst -Force
-            }
-        }
-
-    # ---------- Create ZIP with top-level manifest ----------
-    $zipPath = Join-Path $root "FaithSaver.zip"
-    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($dist, $zipPath)
-
-    # ---------- Verify ZIP contains the critical files ----------
-        $expectedMustHave = @(
-        "manifest",
-        "source/main.brs",
-        "components/SettingsScene.xml",
-        "components/SettingsScene.brs",
-        "components/SaverScene.xml",
-        "components/SaverScene.brs",
-        "components/AboutOverlay.xml",
-        "components/AboutOverlay.brs",
-        "components/ImageFeedTask.xml",
-        "components/ImageFeedTask.brs",
-        "images/FaithSaver-Poster-290x218.jpg",
-        "images/FaithSaver-Poster-540x405.jpg",
-        "images/FaithSaver-Splash-1280x720.jpg",
-        "images/FaithSaver-Splash-1920x1080.jpg",
-        "images/offline/default.jpg"
-    )
-
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
-    try {
-        $zipEntries = $zip.Entries | ForEach-Object { $_.FullName }
-        $missing = @()
-        foreach ($e in $expectedMustHave) { if (-not ($zipEntries -contains $e)) { $missing += $e } }
-        if ($missing.Count -gt 0) { throw "Zip verification failed. Missing entries:`n$($missing -join "`n")" }
-    } finally { $zip.Dispose() }
-
-    Write-Host "Build OK."
-    Write-Host " - Staged in: $dist"
-    Write-Host " - ZIP created at: $zipPath (manifest at ZIP root)"
+  $entries = $zipObj.Entries | ForEach-Object { $_.FullName.TrimStart('./') }
+  $set = [System.Collections.Generic.HashSet[string]]::new([string[]]$entries)
+  $missingZip = @()
+  foreach ($rel in $mustHave) {
+    $pathInZip = ($rel -replace '\\','/')
+    if (-not $set.Contains($pathInZip)) { $missingZip += $pathInZip }
+  }
+  if ($missingZip.Count -gt 0) {
+    throw "Zip verification failed. Missing entries:`n$($missingZip -join "`n")"
+  }
+} finally {
+  $zipObj.Dispose()
 }
-finally {
-    Pop-Location
+
+# ----- Inventory -----
+Write-Host "ZIP OK. Inventory:"
+Get-ChildItem $Pkg -Recurse | ForEach-Object {
+  if (-not $_.PSIsContainer) {
+    $rel = $_.FullName.Substring($Pkg.Length).TrimStart('\','/')
+    "{0,8} bytes  {1}" -f $_.Length, $rel
+  }
 }
+
+Write-Host "Done: $Zip"
