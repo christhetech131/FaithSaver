@@ -1,71 +1,52 @@
 # FaithSaver — Roku SceneGraph Screensaver
 
-FaithSaver is a Roku screensaver that displays faith‑based photography and Scripture artwork. It is lean, network‑efficient, and simple to maintain. Users pick a category in **Settings**, and the saver shows an **offline first frame** immediately, then cycles **online images** from your GitHub repository using a deterministic rotation with lightweight transitions.
+FaithSaver is a Roku **screensaver** that cycles beautiful, faith-based photography and Scripture artwork. It’s lean, privacy-friendly, and simple to maintain. Users choose a category in **Settings ▸ Theme ▸ Screensavers ▸ Change screensaver settings**. The saver shows an **offline first frame** instantly, then rotates **online images** from a public GitHub repo with smooth transitions.
+
+> ✅ **Store-ready & compliant:** stand-alone screensaver package, no deep linking, no `onKeyEvent` handlers in any component, and guarded memory-monitor hooks to quiet Static Analysis warnings.
 
 ---
 
-## TL;DR (What it does)
-- **Single production saver** (no separate preview path)
-- **Offline first frame** shown instantly per category (`pkg:/images/offline/<key>.jpg`)
-- **Online fetch**: GitHub Contents API → filter image files → map to raw URLs
-- **Deterministic rotation**: start index = `roDateTime().AsSeconds() mod count`, then round‑robin
-- **Timer**: default 30s between image changes (configured in XML)
-- **Transitions**: Fade / Slide / Zoom chosen per change (deterministic “random”), with **Fade enforced for the very first transition**; Slide is a bit slower for polish
-- **Settings**: Category selector with header and About overlay (QR to project site)
-- **No RNG APIs**, no heavy effects; works consistently across Roku firmware
+## What’s included (current build)
+
+- **Stand-alone screensaver** (no channel/tile UI).  
+  - Uses only `RunScreenSaver` and `RunScreenSaverSettings`.  
+  - No `title=` or “in-channel screensaver” behavior in the manifest.
+- **Offline → Online flow:** shows `pkg:/images/offline/default.jpg` immediately; switches to online images when ready.
+- **Online feed:** GitHub Contents API → filter `.jpg|.jpeg|.png` → map to raw GitHub URLs.  
+  - Headers: `User-Agent: FaithSaver/1.0 (+roku)` and `Accept: application/vnd.github+json`.  
+  - TLS with Roku CA bundle via `SetCertificatesFile("common:/certs/ca-bundle.crt")`.
+- **Rotation:** deterministic variety without RNG. Start index = `roDateTime().AsSeconds() mod count`, then round-robin.
+- **Timer:** default **30s** between image changes.
+- **Transitions:** double-buffered **Fade / Slide / Zoom**.  
+  - First transition is **Fade**; later transitions alternate deterministically.  
+  - Zoom scales from ~0.98 → 1.00.
+- **Settings UI:** category selector and **About** overlay with QR link.  
+  - Implemented without `onKeyEvent` (list/scene behavior handles focus & close).
+- **Analyzer-quiet memory hooks (guarded):** `roAppMemoryMonitor` + `roDeviceInfo` enabled safely (no behavior change).
 
 ---
 
-## Quick Links
-- **Project Website (GitHub Pages):** https://christhetech131.github.io/FaithSaver/
-- **Submit Images (Dropbox File Request):** https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA  
-  (Raw form URL: https://www.dropbox.com/request/jPpbec3mTcXPfycknlAl)
-- **Email:** mailto:faithsaver131@gmail.com
+## Minimum firmware
 
-> This README supersedes the previous version while keeping its intent and links.  (Original reference kept for history.)
+- **Runs on:** SceneGraph devices (**Roku OS 7.0+**).  
+- **Recommended store setting:** **Roku OS 9.0+** for reliable HTTPS to GitHub on all devices.  
+- **Packaging note:** If your `.pkg` format is SQUASHFS_ZSTD (produced on very new OS), the dashboard may require **11.0+**. Otherwise **9.0** is ideal.
 
 ---
 
-## How It Works
+## Categories
 
-### Mode
-- **Production Saver (only).** The Roku “Preview” entry routes to the same saver path by design.
-- On start, the saver reads the saved **category** from the Roku Registry: `FaithSaver/category` (defaults to `animals`).
-
-### Offline → Online flow
-1. **Offline first frame**: immediately shows `pkg:/images/offline/<category>.jpg`.  
-2. **Online fetch**: a `Task` (`ImageFeedTask`) calls the GitHub Contents API:  
-   `https://api.github.com/repos/<user>/<repo>/contents/<category>`  
-   The task filters for `.jpg|.jpeg|.png` files and maps them to raw URLs:  
-   `https://raw.githubusercontent.com/<user>/<repo>/main/<category>/<name>`  
-3. **Rotation** (no RNG): pick `start = roDateTime().AsSeconds() mod count`, then `index = (index + 1) mod count` each tick.
-4. **Timer**: set in `components/SaverScene.xml` (`<Timer id="cycler" duration="30" repeat="true" />`).
-
-### Transitions (portable & simple)
-We use a double‑buffer (`bgA`, `bgB`) with **Animation + FieldInterpolators**:
-- **Fade** (350ms): cross‑fade opacity between buffers.
-- **Slide** (650ms): push left; incoming slides from right while outgoing slides left. (Both at full opacity.)
-- **Zoom** (350ms): quick ease‑in — incoming fades 0→1 while slightly scaling from 0.98→1.00.
-
-**Selection strategy:** For each ready image, choose transition mode via `(roDateTime().AsSeconds() + index) mod 3`. This yields a stable “random‑ish” mix **without RNG**. The **very first** transition after startup is always **Fade** (to avoid a slide revealing a gray base).
-
-**Changing speeds:**  
-- **Fade speed:** `m.animFade.duration` in `SaverScene.brs` (seconds)  
-- **Slide speed:** `m.animSlide.duration` in `SaverScene.brs` (seconds)  
-- **Zoom speed:** `m.animZoom.duration` in `SaverScene.brs` (seconds)  ← *adjust this to change zoom speed*
-
-> Subtlety (not speed) of Zoom is controlled by the scale range in `m.zoomScale.keyValue` (`[0.98, 0.98] → [1.0, 1.0]`).
-
-### Categories
-Supported keys (used by Settings UI and offline images):
 ```
 animals, fall, geology, scenery, seasonal, space, spring, summer, textures, winter
 ```
-- **seasonal** uses `offline/default.jpg` for the first frame; online images still come from the `/seasonal` folder (if populated).
+
+> **Offline image** is a single universal fallback: `pkg:/images/offline/default.jpg`.  
+> Online images still come from the selected category folder (e.g., `/animals`).
 
 ---
 
-## Repo Layout (expected)
+## Repository layout (expected)
+
 ```
 / (repo root)
   /animals/*.jpg|png
@@ -80,23 +61,13 @@ animals, fall, geology, scenery, seasonal, space, spring, summer, textures, wint
 
   /images/
     FaithSaver-Poster-540x405.jpg
-    FaithSaver-BrandTile-147x113.jpg
+    FaithSaver-Poster-290x218.jpg
     FaithSaver-Splash-1920x1080.jpg
     FaithSaver-Splash-1280x720.jpg
     faithsaverqr.png
     /offline/
-      animals.jpg
-      fall.jpg
-      geology.jpg
-      scenery.jpg
-      space.jpg
-      spring.jpg
-      summer.jpg
-      textures.jpg
-      winter.jpg
       default.jpg
-    /about/
-      FaithSaver-About-1920x1080.png (optional)
+
   manifest
   /source/main.brs
   /components/
@@ -105,86 +76,117 @@ animals, fall, geology, scenery, seasonal, space, spring, summer, textures, wint
     SettingsScene.xml / SettingsScene.brs
     AboutOverlay.xml / AboutOverlay.brs
   README.md
-  index.html (landing page used by QR)
 ```
 
 ---
 
-## UI Details
+## Manifest (screensaver-only)
 
-### Settings
-- Background: `pkg:/images/FaithSaver-Splash-1920x1080.jpg`
-- Highlight bar: navy rectangle; labels created in BRS
-- **Header:** `FaithSaver Settings — Saved: <title>` (updates after saving)
-- **Up/Down:** move selection; **OK:** save; **Back:** exit (host screen handles close)
-- **About** row opens a modal overlay with text (left) and a QR poster (right)
-
-### About overlay
-- Right pane QR: `pkg:/images/faithsaverqr.png`
-- Optional full‑image about background supported (`/images/about/*`)
-
----
-
-## Image Requirements
-- Baseline (non‑progressive) JPG or PNG
-- sRGB, 8‑bit; no CMYK; avoid EXIF rotations that confuse decoders
-- **1920×1080 or larger** recommended
-- Keep sizes reasonable for older devices
-
----
-
-## Manifest Essentials
 ```text
-title=FaithSaver
+# FaithSaver — manifest (screensaver-only)
 screensaver_title=FaithSaver
 ui_resolutions=fhd
 
+# Icons / splash (used by the OS where applicable)
 mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
-mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-540x405.jpg
-
+mm_icon_focus_hd=pkg:/images/FaithSaver-Poster-290x218.jpg
 splash_screen_fhd=pkg:/images/FaithSaver-Splash-1920x1080.jpg
 splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
 
-ui_brand_tile=pkg:/images/FaithSaver-BrandTile-147x113.jpg
-
+# Entry points
 run_screensaver=RunScreenSaver
 run_screensaver_settings=RunScreenSaverSettings
-# (No preview entry by design)
+
+# No deep linking in a screensaver package
+# supports_input_launch= (omitted)
+
+# Versioning
+major_version=1
+minor_version=0
+build_version=103
 ```
-> Ensure art files exist and match the exact filenames above.
+
+> We intentionally omit `title=` and any “tile” behaviors to avoid “in-channel screensaver” violations.
 
 ---
 
-## Build, Package, and Run (Dev)
-1. Verify required paths (see **Repo Layout**). Ensure each **offline image** exists.
-2. Zip from project root and sideload via Roku dev web UI.
-3. Watch telnet logs at `telnet <roku-ip> 8085` for diagnostics (look for `[FaithSaver][...]`).
-4. In Settings, choose a category (OK to save). When the saver runs, you’ll see:
-   - Offline first frame instantly
-   - Online images rotating every 30s (or your test value)
+## How it works (tech notes)
 
-**Logging prefixes**:  
-`[FaithSaver][Main]`, `[FaithSaver][Settings]`, `[FaithSaver][Saver]`, `[FaithSaver][Feed]`
+### Fetch flow
+1. **Task** (`ImageFeedTask`) calls `https://api.github.com/repos/<user>/<repo>/contents/<category>`  
+   - Headers:  
+     - `User-Agent: FaithSaver/1.0 (+roku)`  
+     - `Accept: application/vnd.github+json`
+2. Filter entries where `type == "file"` and extension is `.jpg | .jpeg | .png`.
+3. Map each to:  
+   `https://raw.githubusercontent.com/<user>/<repo>/<branch>/<category>/<name>`
+4. Post list back to `SaverScene` when ready.
+
+### Transitions
+- **Double buffer:** `bgA` and `bgB` Poster nodes.  
+- **Fade:** crossfade opacities.  
+- **Slide:** incoming from right, outgoing to left (both at full opacity).  
+- **Zoom:** incoming fades 0→1 while scaling 0.98→1.00.
+
+Change speeds by adjusting the corresponding **Animation** durations in `SaverScene.brs`. Zoom subtlety is primarily controlled by the start/end scale range.
+
+---
+
+## Memory monitoring (to quiet Static Analysis)
+
+We include a guarded initializer that:
+- Creates `roAppMemoryMonitor` and enables `EnableMemoryWarningEvent(true)`.
+- Calls `GetChannelMemoryLimit()`, `GetMemoryLimitPercent()`, and `GetChannelAvailableMemory()` once (so usage is detected).
+- Creates `roDeviceInfo`, sets the same message port, and calls `EnableLowGeneralMemoryEvent(true)`.
+- Consumes `roDeviceInfoEvent` with a no-op branch in event loops.
+
+> All calls are **guarded**; on older firmware they no-op safely.
+
+---
+
+## Image guidelines
+
+- Baseline (non-progressive) **JPG** or **PNG**  
+- **sRGB, 8-bit**, no CMYK  
+- **1920×1080+** recommended  
+- Use reasonable file sizes for older devices
+
+---
+
+## Build, package, and publish
+
+1. **Dev test:** Zip and sideload from the Roku developer web interface.  
+   - Logs via telnet: `telnet <roku-ip> 8085`  
+   - Log prefixes: `[FaithSaver][Main]`, `[FaithSaver][Settings]`, `[FaithSaver][Saver]`, `[FaithSaver][Feed]`
+2. **Package for store:** Use the Roku **Package** workflow (`.pkg`).  
+   - Choose **Minimum firmware** ≥ your package format’s minimum (CRAMFS ≥ 7.7, SQUASHFS ≥ 8.0, SQUASHFS_ZSTD ≥ 11.0).  
+   - Recommended: **v9.0.0** (reliable HTTPS & broad coverage).
+3. **Static analysis:** Should return to the “Run analysis” page with no results when clean.  
+   - No deep linking, no `onKeyEvent` anywhere, and memory hooks included.
 
 ---
 
 ## Troubleshooting
-- **Grey screen:** For Slide, both posters must be non‑transparent; code sets `opacity=1.0` for slide mode. If customized, ensure incoming/outgoing opacity isn’t left at 0.
-- **No online images:** Confirm the repo folder exists and includes `.jpg/.jpeg/.png` at the **category root**. Watch logs:
-  - `[Feed] GET …` then `Discovered N image file(s)`
-- **Hangs/crashes in dev:** Some sideloaded sessions differ from published behavior. Let the saver start from Home and retest.
-- **Back/Home behavior:** Dev builds swallow **Back** to avoid accidental exits; published savers are governed by Roku system keys.
-- **First transition oddness:** First transition is forced to **Fade** to avoid sliding over a blank/gray base.
+
+- **Blank/gray on first transition:** ensure first transition stays **Fade**; slide/zoom rely on initialized buffers.  
+- **No online images:** confirm the repo category exists and contains supported files at the **category root**; check feed logs for “Discovered N image file(s)”.  
+- **Network down:** saver remains on offline `default.jpg` and keeps trying in the background.  
+- **Keys:** published savers are governed by system behavior; package contains **no** `onKeyEvent` handlers.
 
 ---
 
 ## Privacy & Attribution
-- Uploaded images must be original or properly licensed. By submitting, you permit display in the FaithSaver app and repository.
-- No analytics or tracking are included.
+
+- No analytics, no tracking, no accounts.  
+- Submitted images must be original or properly licensed for public display.  
+- By submitting, you grant permission for use in the FaithSaver app and repository.
 
 ---
 
-## Contact
-- Email: **faithsaver131@gmail.com**
-- Project site: https://christhetech131.github.io/FaithSaver/
-- Repository: https://github.com/christhetech131/FaithSaver/
+## Project links
+
+- **Project website:** https://christhetech131.github.io/FaithSaver/  
+- **Submit images:** https://www.dropbox.com/request/oHIb71WTmJk443JL0ZeA  
+  (Raw form URL: https://www.dropbox.com/request/jPpbec3mTcXPfycknlAl)  
+- **Email:** faithsaver131@gmail.com  
+- **Repository:** https://github.com/christhetech131/FaithSaver/
