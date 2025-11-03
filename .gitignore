@@ -43,3 +43,6 @@ pnpm-debug.log*
 *.ps1
 *.zip
 !Build-FaithSaver.ps1
+
+# Text Notes
+password.txt
