@@ -1,7 +1,5 @@
 # FaithSaver — manifest
 
-title=FaithSaver
-
 screensaver_title=FaithSaver
 ui_resolutions=fhd
 
@@ -16,7 +14,7 @@ splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
 run_screensaver=RunScreenSaver
 run_screensaver_settings=RunScreenSaverSettings
 
-# Deep linking
+hidden=1
 
 # Version (bump before packaging)
 major_version=1
