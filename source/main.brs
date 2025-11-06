@@ -100,9 +100,6 @@ sub RunScreenSaverSettings()
     settings = screen.CreateScene("SettingsScene")
     screen.Show()
 
-    ' AppLaunchComplete beacon after first paint
-    settings.signalBeacon("AppLaunchComplete")
-
     while true
         msg = wait(0, m.port)
 

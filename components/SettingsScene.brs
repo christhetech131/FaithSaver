@@ -202,8 +202,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
   key = LCase(key)
   print "[FaithSaver][Settings] onKeyEvent key=" + key
 
-  ' Block keys while About overlay is open
   if m.overlayHost <> invalid and m.overlayHost.visible and m.overlayHost.getChildCount() > 0 then
+    ' Close About popup only; remain in settings
+    onOverlayClose()
     return true
   end if
 

@@ -1,5 +1,7 @@
 # FaithSaver — manifest
 
+title=FaithSaver
+
 screensaver_title=FaithSaver
 ui_resolutions=fhd
 
@@ -19,4 +21,4 @@ run_screensaver_settings=RunScreenSaverSettings
 # Version (bump before packaging)
 major_version=1
 minor_version=0
-build_version=103
+build_version=104

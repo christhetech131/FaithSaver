@@ -65,6 +65,9 @@ sub init()
 
   if m.cycler <> invalid then
     m.cycler.ObserveField("fire", "onCycle")
+	' Start cycler immediately; will rotate offline until feed arrives
+	m.cycler.control = "start"
+	FSLogSaver("Cycler started (unconditional)")
   end if
 
   m.top.ObserveField("visible", "onVisibleChanged")
@@ -316,10 +319,8 @@ end sub
 sub onVisibleChanged()
   if m.cycler = invalid then return
   if m.top.visible = true then
-    if m.items <> invalid and m.items.count() > 0 then
-      m.cycler.control = "start"
-      FSLogSaver("Visible=TRUE → cycler resumed")
-    end if
+    m.cycler.control = "start"
+    FSLogSaver("Visible=TRUE → cycler resumed")
   else
     m.cycler.control = "stop"
     FSLogSaver("Visible=FALSE → cycler paused")

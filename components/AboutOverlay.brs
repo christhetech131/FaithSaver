@@ -14,7 +14,7 @@ sub init()
   colorMuted = &h223041FF
 
   if m.title <> invalid then m.title.color = colorNavy
-  if m.sep   <> invalid then m.sep.blendColor = colorNavy
+  if m.sep   <> invalid then m.sep.color = colorNavy
 
   if m.body <> invalid then
     m.body.color = colorBlack
