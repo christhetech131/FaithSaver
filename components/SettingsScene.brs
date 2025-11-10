@@ -1,6 +1,4 @@
-' SettingsScene - Labels + highlight bar; registry save; About overlay
-
-' NOTE: logger.brs is now included via XML <script>; do not use Library here.
+' SettingsScene — Labels + highlight bar; registry save; About overlay
 
 sub init()
   m.menu        = m.top.findNode("menu")
@@ -9,9 +7,6 @@ sub init()
   m.sepHeader   = m.top.findNode("sepHeader")
   m.sepAbout    = m.top.findNode("sepAbout")
   m.overlayHost = m.top.findNode("overlayHost")
-
-  ' hidden key sequence buffer
-  m.seq = ""
 
   ' colors (0xRRGGBBAA)
   m.colorNavy  = &h103A57FF
@@ -44,14 +39,17 @@ sub init()
     i = i + 1
   end while
 
+  ' initial focus = saved
   m.focus = m.selected
 
+  ' separator above About row
   if m.sepAbout <> invalid then
     aboutY = 144 + (m.rowH * (m.titles.count() - 1)) - 8
     m.sepAbout.translation = [96, aboutY]
     m.sepAbout.visible = true
   end if
 
+  ' header
   if m.sepHeader <> invalid then m.sepHeader.visible = true
   if m.title <> invalid then
     m.title.visible = true
@@ -63,6 +61,9 @@ sub init()
 
   m.top.focusable = true
   m.top.setFocus(true)
+
+  ' NOTE: Do NOT call m.top.signalBeacon("AppLaunchComplete") here.
+  ' The system emits AppLaunchComplete automatically when the first frame renders.
 
   print "SettingsScene.init"
   print "Saved key: " ; m.savedKey
@@ -98,6 +99,7 @@ sub BuildOptions()
   m.keys.push("winter")
   m.keys.push("about")
 
+  ' build list labels
   i = 0 : y = 0
   m.labels = CreateObject("roArray", m.titles.count(), true)
   while i < m.titles.count()
@@ -141,7 +143,7 @@ sub UpdateTitle()
     m.title.opacity = 1.0
     if m.savedKey <> "about" then
       m.title.color = m.colorBlack
-      m.title.text  = "FaithSaver Settings - Saved: " + display
+      m.title.text  = "FaithSaver Settings — Saved: " + display
     else
       m.title.text  = "FaithSaver Settings"
     end if
@@ -152,11 +154,13 @@ sub UpdateTitle()
 end sub
 
 sub Paint()
+  ' highlight bar
   newY = m.focus * m.rowH
   m.hl.translation = [96, 144 + newY]
   m.hl.color = m.colorNavy
   m.hl.opacity = 1.0
 
+  ' label colors
   i = 0
   while i < m.labels.count()
     if i = m.focus then
@@ -193,44 +197,13 @@ sub onOverlayClose()
   m.top.setFocus(true)
 end sub
 
-function FS_MapKey(k as string) as string
-  k = LCase(k)
-  if k = "up" then return "u"
-  if k = "down" then return "d"
-  if k = "left" then return "l"
-  if k = "right" then return "r"
-  if k = "ok" then return "o"
-  if k = "options" then return "s"
-  return ""
-end function
-
 function onKeyEvent(key as string, press as boolean) as boolean
   if not press then return false
   key = LCase(key)
   print "[FaithSaver][Settings] onKeyEvent key=" + key
 
-  ' Hidden diagnostics toggle (no UI)
-  code = FS_MapKey(key)
-  if code <> "" then
-    if m.seq = invalid then m.seq = ""
-    m.seq = m.seq + code
-
-    ' Enable: Up, Up, Down, Down, Left, Right, Left, Right, OK
-    if m.seq.Len() >= 9 and Right(m.seq, 9) = "uuddllrro" then
-      FS_SetDiag(true)
-      FS_Log("diag: enabled")
-      return true
-    end if
-
-    ' Disable: Options three times
-    if m.seq.Len() >= 3 and Right(m.seq, 3) = "sss" then
-      FS_SetDiag(false)
-      FS_Log("diag: disabled")
-      return true
-    end if
-  end if
-
   if m.overlayHost <> invalid and m.overlayHost.visible and m.overlayHost.getChildCount() > 0 then
+    ' Close About popup only; remain in settings
     onOverlayClose()
     return true
   end if
@@ -238,11 +211,13 @@ function onKeyEvent(key as string, press as boolean) as boolean
   c = m.titles.count()
 
   if key = "up" then
+    ' wrap-around navigation
     m.focus = (m.focus + c - 1) mod c
     Paint()
     return true
 
   else if key = "down" then
+    ' wrap-around navigation
     m.focus = (m.focus + 1) mod c
     Paint()
     return true

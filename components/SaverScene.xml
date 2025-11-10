@@ -1,24 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="SaverScene" extends="Scene">
   <interface>
+    <!-- Mode control from main.brs ("saver") -->
     <field id="mode" type="string" alwaysNotify="true" />
+    <!-- Signal to host to exit -->
     <field id="close" type="boolean" />
   </interface>
 
   <children>
+    <!-- Double-buffered full-screen posters -->
     <Poster id="bgA" width="1920" height="1080" loadDisplayMode="scaleToFill" visible="true" />
     <Poster id="bgB" width="1920" height="1080" loadDisplayMode="scaleToFill" visible="false" />
 
+    <!-- Optional hint (kept hidden in production saver; shown if you ever re-enable preview) -->
     <Label id="previewHint"
            translation="[96, 984]"
            width="1728" height="60"
            horizAlign="left" vertAlign="center"
-           font="font:MediumSystemFont"
+           font="Medium"
            color="0xFFFFFFFF"
            visible="false"
            text="Press UP/DOWN to cycle • BACK to exit" />
 
+    <!-- 30s cycler timer (seconds) -->
     <Timer id="cycler" repeat="true" duration="30" />
+
+    <!-- Online feed task -->
     <ImageFeedTask id="feed" />
   </children>
 

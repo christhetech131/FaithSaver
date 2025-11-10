@@ -1,6 +1,7 @@
 # FaithSaver — manifest
+
 screensaver_title=FaithSaver
-ui_resolutions=hd,fhd
+ui_resolutions=fhd
 
 # Store icons / art
 mm_icon_focus_fhd=pkg:/images/FaithSaver-Poster-540x405.jpg
@@ -13,10 +14,9 @@ splash_screen_hd=pkg:/images/FaithSaver-Splash-1280x720.jpg
 run_screensaver=RunScreenSaver
 run_screensaver_settings=RunScreenSaverSettings
 
-# (optional) keep hidden during testing
 hidden=1
 
 # Version (bump before packaging)
 major_version=1
 minor_version=0
-build_version=105
+build_version=104
