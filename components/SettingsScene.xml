@@ -9,7 +9,7 @@
     <Group id="menu" translation="[96,144]" />
     <Rectangle id="sepAbout" translation="[96,144]" width="1680" height="2" color="0x103A57FF" opacity="1.0" visible="false" />
 
-    <!-- HEADER (drawn last so it sits on top) -->
+    <!-- HEADER -->
     <Label id="title"
            translation="[96,72]"
            width="1728"
@@ -26,5 +26,9 @@
     <Group id="overlayHost" visible="false" />
   </children>
 
+  <!-- Include shared logger helpers (needed by SettingsScene.brs) -->
+  <script type="text/brightscript" uri="pkg:/source/logger.brs" />
+
+  <!-- Scene script -->
   <script type="text/brightscript" uri="pkg:/components/SettingsScene.brs" />
 </component>
