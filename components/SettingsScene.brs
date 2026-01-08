@@ -119,12 +119,28 @@ sub BuildOptions()
 end sub
 
 function CurrentSeasonName() as String
-  dt = CreateObject("roDateTime")
-  mth = dt.GetMonth()
-  if mth = 12 or mth <= 2 then return "winter"
-  if mth >= 3 and mth <= 5 then return "spring"
-  if mth >= 6 and mth <= 8 then return "summer"
-  return "fall"
+  season = "fall"  ' safe default
+  try
+    dt = CreateObject("roDateTime")
+    if dt <> invalid then
+      dt.ToLocalTime()
+      mth = dt.GetMonth()
+      if type(mth) = "Integer" or type(mth) = "roInt" then
+        if mth = 12 or mth <= 2 then
+          season = "winter"
+        else if mth >= 3 and mth <= 5 then
+          season = "spring"
+        else if mth >= 6 and mth <= 8 then
+          season = "summer"
+        else
+          season = "fall"
+        end if
+      end if
+    end if
+  catch e
+    print "[FaithSaver] CurrentSeasonName error: " ; e.message
+  end try
+  return season
 end function
 
 sub UpdateTitle()

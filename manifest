@@ -19,4 +19,4 @@ hidden=1
 # Version (bump before packaging)
 major_version=1
 minor_version=0
-build_version=104
+build_version=106

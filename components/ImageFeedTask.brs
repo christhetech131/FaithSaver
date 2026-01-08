@@ -9,6 +9,12 @@ sub runTask()
   cat = LCase(ToStringSafe(m.top.category))
   if cat = "" then cat = "animals"
 
+  ' *** SEASONAL RESOLUTION - convert "seasonal" to actual season folder ***
+  if cat = "seasonal" then
+    cat = CurrentSeasonName()
+    FSLogFeed("Seasonal resolved to: " + cat)
+  end if
+
   user   = "christhetech131"
   repo   = "FaithSaver"
   branch = "main"
@@ -61,6 +67,27 @@ sub runTask()
   m.top.items = files
   FSLogFeed("OK items=" + StrI(files.count()))
 end sub
+
+' ---------- Season Resolution ----------
+
+function CurrentSeasonName() as string
+  season = "winter"  ' safe default
+  dt = CreateObject("roDateTime")
+  if dt <> invalid then
+    dt.ToLocalTime()  ' Convert UTC to local time for accurate month
+    mth = dt.GetMonth()
+    if mth = 12 or mth <= 2 then
+      season = "winter"
+    else if mth >= 3 and mth <= 5 then
+      season = "spring"
+    else if mth >= 6 and mth <= 8 then
+      season = "summer"
+    else
+      season = "fall"
+    end if
+  end if
+  return season
+end function
 
 ' ---------- helpers ----------
 
