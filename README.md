@@ -4,7 +4,7 @@ FaithSaver is a **stand-alone Roku screensaver** that cycles faith-based photogr
 It shows an offline image immediately, then fetches and rotates online images from a public GitHub repository
 with smooth transitions (Fade → Slide → Zoom).
 
-This README supersedes the prior version and reflects the changes verified in v1.0.106.
+This README supersedes the prior version and reflects the changes verified in v1.0.107.
 
 ---
 
@@ -12,13 +12,14 @@ This README supersedes the prior version and reflects the changes verified in v1
 
 - **Stand-alone screensaver** package (not a channel); no `Main()` or deep linking.
 - Entry points: `RunScreenSaver` and optional `RunScreenSaverSettings`.
-- **Offline-first**: displays `pkg:/images/offline/default.jpg` immediately.
+- **Offline-first**: displays category-specific default images immediately (e.g., animal image for Animals category).
 - **Online feed**: pulls JPEG/PNG files from GitHub folder paths per category.
 - **Rotation**: 30-second Timer; deterministic start index; round-robin thereafter.
 - **Transitions**: double-buffered Posters with Fade/Slide/Zoom.
 - **Settings**: category selector; **About** overlay closes on any key and returns to the list.
 - **Seasonal (auto)**: automatically resolves to the current season folder based on device local time.
 - **Robust timer start**: rotation starts even if the feed is empty/slow; offline image rotates until items arrive.
+- **Category-specific defaults**: each category displays a representative image when offline for a polished, contextual experience.
 
 ---
 
@@ -26,7 +27,18 @@ This README supersedes the prior version and reflects the changes verified in v1
 
 ```
 /<category>/*.jpg|png         # animals, fall, geology, scenery, space, spring, summer, textures, winter
-/images/offline/default.jpg
+/images/offline/
+  animals_default.jpg
+  fall_default.jpg
+  geology_default.jpg
+  scenery_default.jpg
+  seasonal_default.jpg
+  space_default.jpg
+  spring_default.jpg
+  summer_default.jpg
+  textures_default.jpg
+  winter_default.jpg
+  default.jpg               # fallback
 /components/  SaverScene.*  SettingsScene.*  ImageFeedTask.*  AboutOverlay.*
 /source/main.brs
 manifest
@@ -34,7 +46,7 @@ manifest
 
 **Categories**
 ```
-animals, fall, geology, scenery, space, spring, summer, textures, winter
+animals, fall, geology, scenery, seasonal, space, spring, summer, textures, winter
 ```
 
 **Seasonal (auto)** resolves to `spring`, `summer`, `fall`, or `winter` based on the current month.
@@ -66,7 +78,7 @@ hidden=1
 # Versioning
 major_version=1
 minor_version=0
-build_version=106
+build_version=107
 ```
 
 **Notes**
@@ -81,7 +93,7 @@ build_version=106
 - **ImageFeedTask**: calls GitHub Contents API for the selected category, filters to `.jpg|.jpeg|.png`, and
   maps them to raw GitHub URLs. If category is "seasonal", resolves to actual season folder first.
 - **SaverScene**:
-  - Shows the offline default first.
+  - Shows the category-specific offline default first using `GetOfflineDefaultForCategory()`.
   - Starts the 30s **cycler** unconditionally in `init()` (so rotation is reliable).
   - When items arrive, transitions begin (Fade first, then Slide/Zoom).
   - Pauses/resumes the cycler on visibility changes.
@@ -94,8 +106,14 @@ build_version=106
 ## Build & package
 
 1. Bump `build_version` in `manifest`.
-2. Sideload the ZIP and verify behavior.
-3. Use Roku Packager (or device Dev UI) to generate a **.pkg** signed with the same key as prior releases.
+2. Use `Build-FaithSaver.ps1` script to create optimized package:
+   - Copies only needed files (manifest, source, components, images)
+   - Converts JPGs to baseline format (except pre-optimized offline folder)
+   - Creates `FaithSaver.zip` in repo root
+3. Sideload the ZIP and verify behavior.
+4. Use Roku Packager (or device Dev UI) to generate a **.pkg** signed with the same key as prior releases.
+
+**Package size**: ~2.3 MB (optimized for sideloading and channel store)
 
 **Minimum firmware**: choose per your dashboard's guidance for your package format; current app tested on modern OS with HTTPS and SceneGraph.
 
@@ -106,6 +124,7 @@ build_version=106
 - **Settings (runscreensaversettings)**: change categories; About overlay closes on any key and returns to list.
 - **Saver (runscreensaver)**:
   - Expect logs like `Cycler started (unconditional)` when run from dev entrypoint.
+  - Each category should show a representative image immediately (e.g., animal for Animals, geology for Geology).
   - Images rotate every ~30s; transitions occur.
 - **Seasonal resolution**: select "Seasonal (auto)" and verify logs show `Seasonal resolved to: <season>`.
 - **Feed-robustness**: temporarily use an empty category or briefly disconnect network — offline default still rotates; online images begin when items arrive.
@@ -128,6 +147,35 @@ build_version=106
 
 - **Seasonal not loading images**  
   Verify `ImageFeedTask.brs` contains the `CurrentSeasonName()` function and resolves "seasonal" before the API call.
+
+- **Wrong category default image**  
+  Verify `GetOfflineDefaultForCategory()` function in `SaverScene.brs` includes all categories and maps correctly.
+
+- **Package too large**  
+  Run the optimization script on offline images: `python optimize-roku-aggressive.py` to reduce to ~100 KB each.
+
+---
+
+## Multi-Platform Support
+
+FaithSaver is available on multiple platforms:
+
+### Roku (SceneGraph)
+- Current version: v1.0.107
+- Package size: ~2.3 MB
+- Category-specific offline defaults
+- Automatic seasonal resolution
+
+### Fire TV (Android/Kotlin)
+- Current version: v1.0.107  
+- Dual-mode app: manually-launched slideshow + DreamService (power users)
+- Random image shuffling
+- Category-specific offline defaults
+- Smooth fade/slide/zoom transitions
+
+### Apple TV (Planned)
+- Native screensaver support (true system integration)
+- Development planned for future release
 
 ---
 
