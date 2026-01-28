@@ -1,0 +1,73 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
+
+android {
+    namespace 'com.faithsaver.firetv'
+    compileSdk 34
+    
+    defaultConfig {
+        applicationId "com.faithsaver.firetv"
+        minSdk 21  // Android 5.0 (Fire TV minimum)
+        targetSdk 34
+        versionCode 107
+        versionName "1.0.107"
+        
+        vectorDrawables {
+            useSupportLibrary true
+        }
+    }
+    
+    signingConfigs {
+        release {
+            storeFile file('C:/Users/cgalati/Documents/GitHub/faithsaver-release.keystore')
+            storePassword 'Alicia0428!'  // Replace with actual password
+            keyAlias 'faithsaver'
+            keyPassword 'Alicia0428!'    // Replace with actual password
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release  // Add this line!
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+    // AndroidX Core
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.leanback:leanback:1.0.0'
+    
+    // Material Design
+    implementation 'com.google.android.material:material:1.11.0'
+    
+    // Coroutines
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    
+    // Lifecycle
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    
+    // Optional: Image loading library (if you want more advanced features)
+    // implementation 'com.github.bumptech.glide:glide:4.16.0'
+    // annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+}
+

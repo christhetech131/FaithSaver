@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FaithSaver</string>
+    <string name="settings_title">FaithSaver Settings</string>
+    <string name="category_label">Select Image Category</string>
+    <string name="about_title">About FaithSaver</string>
+    <string name="about_button">About</string>
+</resources>

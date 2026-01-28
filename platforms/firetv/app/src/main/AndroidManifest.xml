@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.faithsaver.firetv">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Fire TV specific features -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:banner="@drawable/app_banner"
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+        
+        <!-- Main Activity - Launcher from Fire TV Home -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <!-- Slideshow Activity - Full screen image display -->
+        <activity
+            android:name=".SlideshowActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
+        
+        <!-- Screensaver/Daydream Service -->
+        <service
+            android:name=".FaithSaverDream"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/dream_info" />
+        </service>
+
+        <!-- Settings Activity -->
+        <activity
+            android:name=".SettingsActivity"
+            android:label="@string/settings_title"
+            android:exported="true"
+            android:screenOrientation="landscape" />
+    </application>
+
+</manifest>
