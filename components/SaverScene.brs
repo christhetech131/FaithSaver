@@ -135,13 +135,53 @@ end sub
 ' =========================
 ' Offline first frame (single default.jpg)
 ' =========================
-sub ShowFirstFrameForCategory(cat as string)
-  ' Touch the parameter so there is no "unused" warning in some firmware compilers
-  if false then print cat
-  uri = "pkg:/images/offline/default.jpg"
-  ShowImage(uri)
+sub ShowFirstFrameForCategory(category as String)
+    ' Load category-specific offline default
+    offlinePath = GetOfflineDefaultForCategory(category)
+    
+    if m.bgA <> invalid then
+        m.bgA.uri = offlinePath
+        m.bgA.opacity = 1.0
+        m.bgA.visible = true
+        FSLogSaver("First frame (bgA) set to: " + offlinePath)
+    end if
+    
+    if m.bgB <> invalid then
+        m.bgB.opacity = 0.0
+        m.bgB.visible = false
+    end if
 end sub
 
+' NEW FUNCTION - Add this after ShowFirstFrameForCategory
+function GetOfflineDefaultForCategory(category as String) as String
+    ' Map category names to their specific default images
+    categoryLower = LCase(category)
+    
+    if categoryLower = "animals" then
+        return "pkg:/images/offline/animals_default.jpg"
+    else if categoryLower = "fall" then
+        return "pkg:/images/offline/fall_default.jpg"
+    else if categoryLower = "geology" then
+        return "pkg:/images/offline/geology_default.jpg"
+    else if categoryLower = "scenery" then
+        return "pkg:/images/offline/scenery_default.jpg"
+    else if categoryLower = "space" then
+        return "pkg:/images/offline/space_default.jpg"
+    else if categoryLower = "spring" then
+        return "pkg:/images/offline/spring_default.jpg"
+    else if categoryLower = "summer" then
+        return "pkg:/images/offline/summer_default.jpg"
+    else if categoryLower = "textures" then
+        return "pkg:/images/offline/textures_default.jpg"
+    else if categoryLower = "winter" then
+        return "pkg:/images/offline/winter_default.jpg"
+	else if categoryLower = "seasonal" then
+        return "pkg:/images/offline/seasonal_default.jpg"
+    else
+        ' Fallback to generic default
+        return "pkg:/images/offline/default.jpg"
+    end if
+end function
 ' =========================
 ' Feed callback
 ' =========================

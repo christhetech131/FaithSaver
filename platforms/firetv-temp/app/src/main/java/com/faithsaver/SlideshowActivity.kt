@@ -56,13 +56,12 @@ class SlideshowActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
+        
         Log.d(TAG, "Slideshow starting")
-    
+        
         prefsManager = PreferencesManager(this)
-        imageCache = ImageCache(this)        
-
+        imageCache = ImageCache(this)
+        
         setupViews()
         loadOfflineImage()
         startRotation()
@@ -99,14 +98,49 @@ class SlideshowActivity : Activity() {
         return imageView
     }
     
+    private fun getOfflineDefaultForCategory(category: String): Int {
+        // Map category names to their specific default images
+        return when (category.lowercase()) {
+            "animals" -> R.drawable.animals_default
+            "fall" -> R.drawable.fall_default
+            "geology" -> R.drawable.geology_default
+            "scenery" -> R.drawable.scenery_default
+            "seasonal" -> R.drawable.seasonal_default
+            "space" -> R.drawable.space_default
+            "spring" -> R.drawable.spring_default
+            "summer" -> R.drawable.summer_default
+            "textures" -> R.drawable.textures_default
+            "winter" -> R.drawable.winter_default
+            else -> R.drawable.offline_default // Fallback to generic default
+        }
+    }
+    
     private fun loadOfflineImage() {
         try {
-            val bitmap = BitmapFactory.decodeResource(resources, R.drawable.offline_default)
+            val selectedCategory = prefsManager.getSelectedCategory()
+            val defaultResourceId = getOfflineDefaultForCategory(selectedCategory)
+            
+            val bitmap = BitmapFactory.decodeResource(resources, defaultResourceId)
             currentImageView?.setImageBitmap(bitmap)
             currentImageView?.alpha = 1f
-            Log.d(TAG, "Loaded offline default image")
+            currentImageView?.visibility = View.VISIBLE
+            
+            // Make sure next view is invisible for smooth first transition
+            nextImageView?.alpha = 0f
+            nextImageView?.visibility = View.INVISIBLE
+            
+            Log.d(TAG, "Loaded offline default image for category: $selectedCategory")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading offline image", e)
+            // Try fallback generic default
+            try {
+                val bitmap = BitmapFactory.decodeResource(resources, R.drawable.offline_default)
+                currentImageView?.setImageBitmap(bitmap)
+                currentImageView?.alpha = 1f
+                currentImageView?.visibility = View.VISIBLE
+            } catch (ex: Exception) {
+                Log.e(TAG, "Error loading fallback offline image", ex)
+            }
         }
     }
     
@@ -136,9 +170,12 @@ class SlideshowActivity : Activity() {
                 if (items.isNotEmpty()) {
                     imageItems.clear()
                     imageItems.addAll(items)
+                    // Shuffle for random order
+                    imageItems.shuffle()
                     currentIndex = 0
-                    Log.d(TAG, "Fetched ${items.size} images")
-                    loadAndShowNextImage()
+                    Log.d(TAG, "Fetched ${items.size} images (shuffled) - waiting for timer")
+                    // Don't call loadAndShowNextImage() here - let the timer handle it
+                    // This ensures consistent 30-second intervals for all transitions
                 } else {
                     Log.w(TAG, "No images found for category: $selectedCategory")
                 }

@@ -4,6 +4,7 @@
    1) Only capture needed files (manifest, source, components, and images *.jpg/*.jpeg/*.png).
       - Exclude design/source files (.ai, .xcf) and the three extra images.
    2) Convert JPGs to baseline (non-progressive) to avoid Poster decode stalls.
+      - SKIP offline folder (already optimized)
    3) Use dist\pkg for staging and output FaithSaver.zip in the repo root.
 #>
 
@@ -67,6 +68,7 @@ if (-not (Test-Path $qrLower)) {
 
 # ----- Convert JPG/JPEG to baseline (non-progressive) -----
 # Uses System.Drawing; default Save() without progressive flags writes baseline JPEG.
+# SKIP the offline folder - those are already optimized
 Add-Type -AssemblyName System.Drawing
 
 function Convert-ToBaselineJpeg {
@@ -86,16 +88,20 @@ function Convert-ToBaselineJpeg {
   }
 }
 
-Write-Host "Converting JPGs to baseline in /images..."
-Get-ChildItem $imagesDst -Recurse -Include *.jpg,*.jpeg | ForEach-Object {
-  try {
-    $tmp = "$($_.FullName).tmp"
-    Convert-ToBaselineJpeg -InPath $_.FullName -OutPath $tmp -Quality 88
-    Move-Item -Force $tmp $_.FullName
-  } catch {
-    Write-Warning "Baseline conversion failed: $($_.FullName) — $($_.Exception.Message)"
+Write-Host "Converting JPGs to baseline in /images... (skipping offline/)"
+Get-ChildItem $imagesDst -Recurse -Include *.jpg,*.jpeg | 
+  Where-Object { $_.FullName -notlike "*\offline\*" } |  # SKIP offline folder
+  ForEach-Object {
+    try {
+      $tmp = "$($_.FullName).tmp"
+      Convert-ToBaselineJpeg -InPath $_.FullName -OutPath $tmp -Quality 88
+      Move-Item -Force $tmp $_.FullName
+    } catch {
+      Write-Warning "Baseline conversion failed: $($_.FullName) — $($_.Exception.Message)"
+    }
   }
-}
+
+Write-Host "Skipped offline folder (pre-optimized)"
 
 # ----- Verify must-haves exist in stage -----
 $mustHave = @(

@@ -11,8 +11,8 @@ android {
         applicationId "com.faithsaver.firetv"
         minSdk 21  // Android 5.0 (Fire TV minimum)
         targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 107
+        versionName "1.0.107"
         
         vectorDrawables {
             useSupportLibrary true
@@ -63,3 +63,4 @@ dependencies {
     // implementation 'com.github.bumptech.glide:glide:4.16.0'
     // annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 }
+
