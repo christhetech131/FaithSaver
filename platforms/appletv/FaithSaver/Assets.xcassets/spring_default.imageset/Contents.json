@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "spring_default.jpg",
+      "idiom" : "tv",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
