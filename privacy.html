@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <title>FaithSaver — Privacy Policy</title>
-  <meta name="description" content="Privacy Policy for FaithSaver, a Roku screensaver and its GitHub Pages site.">
+  <meta name="description" content="Privacy Policy for FaithSaver, a faith-based screensaver app available on Roku, Apple TV, and Fire TV.">
 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,7 +40,7 @@
     .logo{height:44px;width:auto;display:block;border-radius:0}
     h1{margin:0;font-size:28px}
     a{color:var(--link);text-decoration:underline}
-    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.2);margin-bottom:16px}
     .sep{height:1px;background:var(--border);margin:18px 0}
     .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;background:var(--chip);border:1px solid var(--border);color:var(--muted)}
     .small{font-size:14px;color:var(--muted)}
@@ -64,32 +64,44 @@
 
     <section class="panel">
       <h2>Summary</h2>
-      <p>The FaithSaver screensaver itself does not include analytics or tracking. It loads an offline first frame and then fetches images from a public GitHub repository for display. The project website is a static GitHub Pages site. If you submit content, we receive your submission and any contact details you provide.</p>
+      <p>FaithSaver is available on Roku, Apple TV, and Amazon Fire TV. Across all platforms, the app does not collect, store, or transmit personal information. It displays an offline image on launch and then fetches faith-based photography from a public GitHub repository. No accounts, no ads, no tracking. The project website is a static GitHub Pages site. If you submit content, we receive your submission and any contact details you provide.</p>
     </section>
 
     <section class="panel">
-      <h2>What the Roku screensaver does</h2>
+      <h2>What the app does — all platforms</h2>
       <ul>
-        <li><strong>Network requests:</strong> The saver makes requests to GitHub’s API and content servers to retrieve image lists and image files for your selected category.</li>
-        <li><strong>No telemetry:</strong> The saver does not send analytics events, advertising identifiers, or other tracking data to us.</li>
-        <li><strong>Device data:</strong> We don’t receive device identifiers or IP addresses from Roku devices. When the saver fetches images from GitHub, GitHub may receive device IP and user‑agent information in the ordinary course of delivering content, governed by their policies.</li>
+        <li><strong>Network requests:</strong> The app makes HTTPS requests to GitHub's API and content servers to retrieve image lists and image files for your selected category. These requests are made using each platform's standard networking stack (URLSession on Apple TV, OkHttp/URLConnection on Fire TV, roUrlTransfer on Roku).</li>
+        <li><strong>No telemetry:</strong> The app does not send analytics events, advertising identifiers, crash reports, or other tracking data to us.</li>
+        <li><strong>Settings storage:</strong> Your selected image category is saved locally on your device only (UserDefaults on Apple TV, SharedPreferences on Fire TV, roRegistrySection on Roku). This data never leaves your device.</li>
+        <li><strong>Device data:</strong> We don't receive device identifiers or IP addresses from your device. When the app fetches images from GitHub, GitHub may receive your device's IP address and user-agent information in the ordinary course of delivering content, governed by <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's Privacy Policy</a>.</li>
+        <li><strong>No accounts required:</strong> FaithSaver does not require you to create an account or sign in on any platform.</li>
+        <li><strong>No purchases or payments:</strong> The app is free and contains no in-app purchases or subscriptions.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>Platform-specific notes</h2>
+      <ul>
+        <li><strong>Apple TV (tvOS):</strong> The app does not use Apple's advertising identifier (IDFA), HealthKit, or any other sensitive platform APIs. It requests only standard network access.</li>
+        <li><strong>Amazon Fire TV:</strong> The app does not use Amazon Advertising APIs, device identifiers, or any Amazon platform tracking services.</li>
+        <li><strong>Roku:</strong> The app does not use Roku's advertising or analytics APIs.</li>
       </ul>
     </section>
 
     <section class="panel">
       <h2>Website (GitHub Pages)</h2>
       <ul>
-        <li>Our site doesn’t set cookies or run third‑party analytics scripts.</li>
-        <li>GitHub Pages and related hosting may maintain server logs (e.g., IP address, user‑agent) as part of operating the service. Those logs are controlled by GitHub.</li>
+        <li>Our site doesn't set cookies or run third-party analytics scripts.</li>
+        <li>GitHub Pages and related hosting may maintain server logs (e.g., IP address, user-agent) as part of operating the service. Those logs are controlled by GitHub.</li>
       </ul>
     </section>
 
     <section class="panel">
       <h2>Submissions (Dropbox and email)</h2>
       <ul>
-        <li><strong>Dropbox File Requests:</strong> If you upload an image via the provided Dropbox links, Dropbox receives the file and associated metadata to deliver it to us. Your use of Dropbox is subject to Dropbox’s terms and privacy policy.</li>
-        <li><strong>Email:</strong> If you email a verse or other content, we’ll receive your email address and any information you include. We use this to review, curate, and attribute submissions.</li>
-        <li><strong>Attribution:</strong> When you provide a name for credit, we may publish that name in the repository or on images, consistent with the submission’s license.</li>
+        <li><strong>Dropbox File Requests:</strong> If you upload an image via the provided Dropbox links, Dropbox receives the file and associated metadata to deliver it to us. Your use of Dropbox is subject to Dropbox's terms and privacy policy.</li>
+        <li><strong>Email:</strong> If you email a verse or other content, we'll receive your email address and any information you include. We use this to review, curate, and attribute submissions.</li>
+        <li><strong>Attribution:</strong> When you provide a name for credit, we may publish that name in the repository or on images, consistent with the submission's license.</li>
       </ul>
     </section>
 
@@ -97,40 +109,41 @@
       <h2>How we use and share information</h2>
       <ul>
         <li>We use submissions to curate and publish images for the screensaver.</li>
-        <li>Approved images may be stored publicly in the GitHub repository and displayed in the screensaver.</li>
-        <li>We don’t sell personal information or use it for advertising.</li>
+        <li>Approved images may be stored publicly in the GitHub repository and displayed in the screensaver across all platforms.</li>
+        <li>We don't sell personal information or use it for advertising.</li>
       </ul>
     </section>
 
     <section class="panel">
       <h2>Data retention</h2>
-      <p>Approved submissions may be retained indefinitely in the public repository. Unapproved submissions may be retained for review for a limited period. You can request removal of your content by emailing us; we’ll make reasonable efforts to comply when feasible and lawful.</p>
+      <p>Approved submissions may be retained indefinitely in the public repository. Unapproved submissions may be retained for review for a limited period. You can request removal of your content by emailing us; we'll make reasonable efforts to comply when feasible and lawful.</p>
     </section>
 
     <section class="panel">
-      <h2>Children’s privacy</h2>
-      <p>FaithSaver isn’t directed to children and doesn’t knowingly collect personal information from children. If you believe a child has submitted personal information, contact us and we’ll address it.</p>
+      <h2>Children's privacy</h2>
+      <p>FaithSaver is not directed to children and does not knowingly collect personal information from children under 13. The app contains no user input, accounts, or communication features. If you believe a child has submitted personal information via email or file upload, contact us and we'll address it promptly.</p>
     </section>
 
     <section class="panel">
       <h2>Your choices</h2>
       <ul>
-        <li>You can uninstall the screensaver at any time via your Roku device.</li>
-        <li>You can choose not to submit images or verses.</li>
+        <li><strong>Apple TV:</strong> You can delete the app at any time from your Apple TV's home screen. Any locally saved settings will be removed with the app.</li>
+        <li><strong>Amazon Fire TV:</strong> You can uninstall the app at any time via Settings → Applications → Manage Installed Applications on your Fire TV device.</li>
+        <li><strong>Roku:</strong> You can remove the screensaver at any time via your Roku device settings.</li>
+        <li>You can choose not to submit images or verses at any time.</li>
         <li>You can email us to request updates or removal of your submission or attribution.</li>
       </ul>
     </section>
 
     <section class="panel">
       <h2>Changes</h2>
-      <p>We may update this Privacy Policy from time to time. If we make material changes, we’ll update the effective date above. Your continued use means you accept the updated policy.</p>
+      <p>We may update this Privacy Policy from time to time. If we make material changes, we'll update the effective date above. Your continued use of the app means you accept the updated policy.</p>
     </section>
 
     <section class="panel">
       <h2>Contact</h2>
       <p>Email: <a href="mailto:faithsaver131@gmail.com">faithsaver131@gmail.com</a></p>
     </section>
-
 
     <footer>
       <p>© <span id="yr"></span> FaithSaver • <a href="https://github.com/christhetech131/FaithSaver#readme" target="_blank" rel="noopener">README</a> • <a href="https://github.com/christhetech131/FaithSaver" target="_blank" rel="noopener">Source</a></p>
@@ -139,4 +152,3 @@
   <script>document.getElementById("yr").textContent = new Date().getFullYear();</script>
 </body>
 </html>
-
