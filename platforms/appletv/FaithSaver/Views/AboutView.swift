@@ -8,9 +8,9 @@ struct AboutView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    /// The navy accent color used in the Roku UI (0x103A57)
-    private let navyAccent = Color(red: 16/255, green: 58/255, blue: 87/255)
-    private let mutedColor = Color(red: 34/255, green: 48/255, blue: 65/255)
+    /// Light blue accent for readability on dark backgrounds
+    private let accentColor = Color(red: 0.4, green: 0.7, blue: 0.9)
+    private let mutedColor = Color(white: 0.6)
 
     var body: some View {
         ZStack {
@@ -31,7 +31,7 @@ struct AboutView: View {
             .padding(48)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(UIColor.systemBackground))
+                    .fill(Color(red: 0.15, green: 0.15, blue: 0.15))
             )
             .padding(80)
         }
@@ -47,16 +47,16 @@ struct AboutView: View {
             Text("FaithSaver")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-                .foregroundColor(navyAccent)
+                .foregroundColor(accentColor)
 
             Text("FaithSaver is a lightweight screensaver that shows faith-based imagery from a public GitHub repository. Open the project README to learn how to contribute images.")
                 .font(.body)
-                .foregroundColor(.primary)
+                .foregroundColor(Color(white: 0.85))
                 .lineLimit(8)
                 .fixedSize(horizontal: false, vertical: true)
 
             Divider()
-                .background(navyAccent)
+                .background(accentColor)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("README (project details):")
@@ -71,7 +71,7 @@ struct AboutView: View {
 
             Text("Version 1.0")
                 .font(.footnote)
-                .foregroundColor(.secondary)
+                .foregroundColor(Color(white: 0.5))
 
             Spacer()
         }

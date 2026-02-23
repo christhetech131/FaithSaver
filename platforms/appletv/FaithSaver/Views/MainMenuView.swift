@@ -72,10 +72,10 @@ struct MainMenuView: View {
             .fullScreenCover(isPresented: $showSlideshow) {
                 SlideshowView()
             }
-            .sheet(isPresented: $showSettings) {
+            .fullScreenCover(isPresented: $showSettings) {
                 SettingsView()
             }
-            .sheet(isPresented: $showSubmitImages) {
+            .fullScreenCover(isPresented: $showSubmitImages) {
                 SubmitImagesView()
             }
         }
@@ -114,51 +114,62 @@ struct SubmitImagesView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private let mutedColor = Color(red: 34/255, green: 48/255, blue: 65/255)
-
     var body: some View {
-        VStack(spacing: 32) {
-            Text("Submit Your Faith-Based Images")
-                .font(.title)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
+        ZStack {
+            Color(red: 0.1, green: 0.1, blue: 0.1)
+                .ignoresSafeArea()
 
-            // QR Code image
-            if let qrImage = UIImage(named: "faithsaverqr") {
-                Image(uiImage: qrImage)
-                    .resizable()
-                    .interpolation(.none)
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 320, height: 320)
-                    .cornerRadius(12)
-            } else {
-                // Placeholder if QR asset not yet added
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 320, height: 320)
-                    .overlay(
-                        VStack(spacing: 8) {
-                            Image(systemName: "qrcode")
-                                .font(.system(size: 80))
-                                .foregroundColor(.secondary)
-                            Text("QR Code")
-                                .font(.callout)
-                                .foregroundColor(.secondary)
-                        }
-                    )
+            VStack(spacing: 40) {
+                Spacer()
+
+                Text("Submit Your Faith-Based Images")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+
+                // QR Code image
+                if let qrImage = UIImage(named: "faithsaverqr") {
+                    Image(uiImage: qrImage)
+                        .resizable()
+                        .interpolation(.none)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 320, height: 320)
+                        .cornerRadius(12)
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 320, height: 320)
+                        .overlay(
+                            VStack(spacing: 8) {
+                                Image(systemName: "qrcode")
+                                    .font(.system(size: 80))
+                                    .foregroundColor(.secondary)
+                                Text("QR Code")
+                                    .font(.callout)
+                                    .foregroundColor(.secondary)
+                            }
+                        )
+                }
+
+                Text("Scan this QR code with your phone\nto submit images to our GitHub repository")
+                    .font(.body)
+                    .foregroundColor(Color(white: 0.7))
+                    .multilineTextAlignment(.center)
+
+                Button("Close") {
+                    dismiss()
+                }
+                .buttonStyle(.card)
+
+                Spacer()
+
+                Text("Press MENU to go back")
+                    .font(.callout)
+                    .foregroundColor(Color(white: 0.5))
+                    .padding(.bottom, 40)
             }
-
-            Text("Scan this QR code with your phone\nto submit images to our GitHub repository")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button("Close") {
-                dismiss()
-            }
-            .buttonStyle(.card)
+            .padding(.horizontal, 80)
         }
-        .padding(60)
         .onExitCommand {
             dismiss()
         }

@@ -13,74 +13,86 @@ struct SettingsView: View {
     @State private var selectedCategory: String = PreferencesManager.shared.selectedCategory
     @State private var showAbout = false
 
-    /// The navy accent color used in the Roku UI (0x103A57)
-    private let navyAccent = Color(red: 16/255, green: 58/255, blue: 87/255)
+    /// Light blue accent for readability on dark backgrounds
+    private let accentColor = Color(red: 0.4, green: 0.7, blue: 0.9)
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header (matches Roku: "FaithSaver Settings — Saved: <category>")
-                headerView
-                    .padding(.horizontal, 48)
-                    .padding(.top, 24)
-                    .padding(.bottom, 8)
+        ZStack {
+            // Dark background
+            Color(red: 0.1, green: 0.1, blue: 0.1)
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("FaithSaver Settings")
+                        .font(.title)
+                        .fontWeight(.semibold)
+                        .foregroundColor(accentColor)
+
+                    Spacer()
+
+                    Text("Saved: \(displayNameForSaved)")
+                        .font(.title3)
+                        .foregroundColor(Color(white: 0.6))
+                }
+                .padding(.horizontal, 80)
+                .padding(.top, 60)
+                .padding(.bottom, 16)
 
                 Divider()
-                    .background(navyAccent)
-                    .padding(.horizontal, 48)
+                    .background(accentColor)
+                    .padding(.horizontal, 80)
 
                 // Category list
-                List {
-                    Section {
+                ScrollView {
+                    VStack(spacing: 4) {
                         ForEach(Category.allCases) { category in
                             CategoryRow(
                                 category: category,
                                 isSelected: selectedCategory == category.folderName,
-                                accentColor: navyAccent
+                                accentColor: accentColor
                             ) {
                                 selectedCategory = category.folderName
                                 PreferencesManager.shared.selectedCategory = category.folderName
                             }
                         }
-                    }
 
-                    Section {
+                        Divider()
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 20)
+
+                        // About button
                         Button(action: { showAbout = true }) {
                             HStack {
-                                Text("About")
-                                    .font(.title3)
-                                Spacer()
                                 Image(systemName: "info.circle")
                                     .font(.title3)
+                                Text("About FaithSaver")
+                                    .font(.title3)
+                                Spacer()
                             }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 16)
                         }
+                        .buttonStyle(.card)
                     }
+                    .padding(.horizontal, 80)
+                    .padding(.top, 24)
+                    .padding(.bottom, 40)
                 }
-                .listStyle(.grouped)
-            }
-            .sheet(isPresented: $showAbout) {
-                AboutView()
+
+                // Footer hint
+                Text("Press MENU to go back")
+                    .font(.callout)
+                    .foregroundColor(Color(white: 0.5))
+                    .padding(.bottom, 40)
             }
         }
-    }
-
-    // MARK: - Header
-
-    private var headerView: some View {
-        HStack {
-            Text("FaithSaver Settings")
-                .font(.title)
-                .fontWeight(.semibold)
-                .foregroundColor(navyAccent)
-
-            Text("—")
-                .foregroundColor(.secondary)
-
-            Text("Saved: \(displayNameForSaved)")
-                .font(.title3)
-                .foregroundColor(.secondary)
-
-            Spacer()
+        .onExitCommand {
+            dismiss()
+        }
+        .fullScreenCover(isPresented: $showAbout) {
+            AboutView()
         }
     }
 
@@ -102,6 +114,7 @@ private struct CategoryRow: View {
             HStack {
                 Text(category.displayName)
                     .font(.title3)
+                    .fontWeight(isSelected ? .semibold : .regular)
 
                 Spacer()
 
@@ -111,6 +124,9 @@ private struct CategoryRow: View {
                         .font(.title3)
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
         }
+        .buttonStyle(.card)
     }
 }
